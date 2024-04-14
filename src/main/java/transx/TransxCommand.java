@@ -115,7 +115,7 @@ public class TransxCommand implements Runnable {
         try (var fos = new FileOutputStream(path.toFile())) {
             var fbytes = bytes.asByteArray();
             var content = new String(fbytes);
-            var fixed = terms.fix(content);
+            var fixed = terms.fix(lang, content);
             fos.write(fixed.getBytes());
             Log.infof("File downloaded successfully: " + path.toString());
         } catch (IOException e) {

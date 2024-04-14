@@ -15,7 +15,7 @@ public interface TransxConfig {
     @WithDefault("transx-bucket")
     Optional<String> bucketName();
     
-    @WithDefault("PT,ES,CA,EN")
+    @WithDefault("PT,ES,CA")
     //@WithDefault("PT")
     List<String> targetLanguages();
 
