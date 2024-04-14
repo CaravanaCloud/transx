@@ -14,6 +14,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+
+import com.oracle.graal.vector.nodes.simd.v;
+
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import jakarta.inject.Inject;
@@ -48,6 +51,9 @@ public class TransxCommand implements Runnable {
 
     @Inject
     TransxConfig cfg;
+
+    @Inject
+    Terms terms;
 
     @Override
     public void run() {
@@ -96,17 +102,21 @@ public class TransxCommand implements Runnable {
 
     private String download(Path dir, String s3URI, String key, String lang) {
         var s3Key = lang + "." + key + ".srt";
-        var keyPath = s3URI + s3Key;
-        var uri = "s3://" + getBucketName() + "/" + keyPath;
-        Log.infof("Downloading %s", uri);
+        var keyURI = s3URI + s3Key;
+        var keyPath = keyURI.replace("s3://"+getBucketName()+"/", "");
+        Log.infof("Downloading [%s]", keyURI);
         var req = GetObjectRequest.builder()
             .bucket(getBucketName())
-            .key(key)
+            .key(keyPath)
             .build();
-        var path = dir.resolve(lang + "." + key + ".srt");
+        var outFile = key + "." + lang + ".srt";
+        var path = dir.resolve(outFile);
         var bytes = s3.getObjectAsBytes(req);
-        try (var fos = new FileOutputStream(Paths.get(keyPath).toFile())) {
-            fos.write(bytes.asByteArray());
+        try (var fos = new FileOutputStream(path.toFile())) {
+            var fbytes = bytes.asByteArray();
+            var content = new String(fbytes);
+            var fixed = terms.fix(content);
+            fos.write(fixed.getBytes());
             Log.infof("File downloaded successfully: " + path.toString());
         } catch (IOException e) {
            Log.warnf("Unable to write file: " + e.getMessage());
@@ -179,7 +189,9 @@ public class TransxCommand implements Runnable {
         var resp = translate.startTextTranslationJob(req);
         var jobId = resp.jobId();
         awaitTranslation(jobId);
-        return new TranslateResult(result, outputURI);
+        var job = getTranslateJob(jobId);
+        var outTxURI = job.outputDataConfig().s3Uri();
+        return new TranslateResult(result, outTxURI);
     }
 
     private String getRoleArn() {
