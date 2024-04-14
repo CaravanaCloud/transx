@@ -4,7 +4,7 @@ import java.nio.file.Path;
 
 public record TranslateResult(
     TranscribeResult transcribeResult,
-    String outputPrefix
+    String outputURI
 ) {
 
     public String mediaKey() {

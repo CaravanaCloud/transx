@@ -1,6 +1,6 @@
 package transx;
 
-import static org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.*;
 import static software.amazon.awssdk.services.transcribe.model.TranscriptionJobStatus.COMPLETED;
 import static software.amazon.awssdk.services.transcribe.model.TranscriptionJobStatus.FAILED;
 
@@ -14,9 +14,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-
-
 import io.quarkus.logging.Log;
+import io.quarkus.runtime.Quarkus;
 import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
 import software.amazon.awssdk.services.iam.IamClient;
@@ -79,6 +78,7 @@ public class TransxCommand implements Runnable {
         Log.infof("[%s] Translation done", translatedList.size());
         translatedList.stream().forEach(t -> download(t));
         Log.infof("Transx done");
+        Quarkus.asyncExit(0);
     }
 
     private String loadPath() {
@@ -87,16 +87,16 @@ public class TransxCommand implements Runnable {
 
     private void download(TranslateResult t) {
         var key = t.mediaKey();
-        var prefix = t.outputPrefix();
+        var outputURI = t.outputURI();
         var langs = cfg.targetLanguages().stream().map(l -> l.toLowerCase());
         var path = t.path();
         var parent = path.getParent();
-        langs.forEach(l -> download(parent, prefix, key, l));
+        langs.forEach(l -> download(parent, outputURI, key, l));
     }
 
-    private String download(Path dir, String prefix, String key, String lang) {
+    private String download(Path dir, String s3URI, String key, String lang) {
         var s3Key = lang + "." + key + ".srt";
-        var keyPath = prefix+ "/" + s3Key;
+        var keyPath = s3URI + s3Key;
         var uri = "s3://" + getBucketName() + "/" + keyPath;
         Log.infof("Downloading %s", uri);
         var req = GetObjectRequest.builder()
@@ -154,29 +154,17 @@ public class TransxCommand implements Runnable {
     }
 
     private String getTrustPolicy() {
-        var policy = """
-                {
-                  "Version": "2012-10-17",
-                  "Statement": [
-                    {
-                      "Effect": "Allow",
-                      "Principal": {
-                        "Service": "translate.amazonaws.com"
-                      },
-                      "Action": "sts:AssumeRole"
-                    }
-                  ]
-                }
-        """;
+        var policy = TransxConfig.DEFAULT_TRUST_POLICY;
         return policy;
     }
 
     private TranslateResult translate(TranscribeResult result) {
         var bucketName = getBucketName();
         var prefix = result.mediaPrefix();
-        var s3Prefix = "s3://" + bucketName + "/" + prefix;
-        var inputURI =  s3Prefix + "/transcribe/";
-        var outputURI = s3Prefix + "/translate/";
+        var s3Prefix =  bucketName + "/" + prefix;
+        var s3URI = "s3://" + s3Prefix;
+        var inputURI =  s3URI + "/transcribe/";
+        var outputURI = s3URI + "/translate/";
         Log.infof("Translating %s", inputURI);
         
         var req = StartTextTranslationJobRequest.builder()
@@ -191,9 +179,7 @@ public class TransxCommand implements Runnable {
         var resp = translate.startTextTranslationJob(req);
         var jobId = resp.jobId();
         awaitTranslation(jobId);
-        var job = getTranslateJob(jobId);
-        var outputPrefix = job.outputDataConfig().s3Uri();
-        return new TranslateResult(result, outputPrefix);
+        return new TranslateResult(result, outputURI);
     }
 
     private String getRoleArn() {
@@ -209,7 +195,8 @@ public class TransxCommand implements Runnable {
     private void awaitTranslation(String jobId) {
         await()
             .timeout(Duration.ofMinutes(45))
-            .pollInterval(Duration.ofSeconds(30))
+            .pollDelay(Duration.ofSeconds(30))
+            .pollInterval(Duration.ofSeconds(120))
             .until(() -> translateDone(jobId));
     }
 
@@ -275,7 +262,7 @@ public class TransxCommand implements Runnable {
         var resp = transcribe.getTranscriptionJob(builder -> builder.transcriptionJobName(jobName));
         var status = resp.transcriptionJob().transcriptionJobStatus();
         var done = COMPLETED.equals(status) || FAILED.equals(status);
-        Log.infof("Status [%s] for transcription [%s]", status, jobName);
+        Log.infof("Transcription [%s] for [%s]", status, jobName);
         return done;
     }
 
@@ -290,6 +277,11 @@ public class TransxCommand implements Runnable {
         var keyName = path.getFileName().toString();
         var req = PutObjectRequest.builder().bucket(bucketName).key(keyName).build();
         var resp = s3.putObject(req, path);
+        var ok = resp.sdkHttpResponse().isSuccessful();
+        if (!ok) {
+            Log.errorf("Failed to put object %s", path);
+            return Optional.empty();
+        }
         var result = new ObjectPutResult(path, keyName);
         return Optional.of(result);
     }
@@ -306,11 +298,6 @@ public class TransxCommand implements Runnable {
 
     private String getBucketName() {
         return cfg.bucketName().orElse("transx-bucket-"+System.currentTimeMillis());
-    }
-
-    public void transcribe(Path path) {
-        Log.infof("Transcribing %s", path);
-
     }
 
     private String cwd() {
