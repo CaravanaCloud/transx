@@ -14,9 +14,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-
-import com.oracle.graal.vector.nodes.simd.v;
-
 import io.quarkus.logging.Log;
 import io.quarkus.runtime.Quarkus;
 import jakarta.inject.Inject;

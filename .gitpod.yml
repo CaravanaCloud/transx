@@ -1,0 +1,22 @@
+image: 
+  file: .gitpod.Containerfile
+
+tasks:
+  - init: echo 'Initializing project'
+    command: echo 'Starting project'
+
+ports:
+  - port: 8080
+    onOpen: ignore
+
+vscode:
+  extensions:
+    - redhat.vscode-xml
+    - redhat.java
+    - vscjava.vscode-java-debug
+    - vscjava.vscode-java-test
+    - redhat.vscode-quarkus
+    - redhat.vscode-microprofile
+    - sonarsource.sonarlint-vscode
+    - GabrielBB.vscode-lombok
+    - ms-python.python
