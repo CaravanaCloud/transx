@@ -44,7 +44,7 @@ public class TransxCommand implements Runnable {
     TranscribeClient transcribe = TranscribeClient.create();
     TranslateClient translate = TranslateClient.create();
     IamClient iam = IamClient.builder().build();
-    Subtitles srt = Subtitles.builder().formats(SubtitleFormat.SRT).build();
+    Subtitles vtt = Subtitles.builder().formats(SubtitleFormat.VTT).build();
 
     @Inject
     TransxConfig cfg;
@@ -98,7 +98,7 @@ public class TransxCommand implements Runnable {
     }
 
     private String download(Path dir, String s3URI, String key, String lang) {
-        var s3Key = lang + "." + key + ".srt";
+        var s3Key = lang + "." + key + ".vtt";
         var keyURI = s3URI + s3Key;
         var keyPath = keyURI.replace("s3://"+getBucketName()+"/", "");
         Log.infof("Downloading [%s]", keyURI);
@@ -106,7 +106,7 @@ public class TransxCommand implements Runnable {
             .bucket(getBucketName())
             .key(keyPath)
             .build();
-        var outFile = key + "." + lang + ".srt";
+        var outFile = key + "." + lang + ".vtt";
         var path = dir.resolve(outFile);
         var bytes = s3.getObjectAsBytes(req);
         try (var fos = new FileOutputStream(path.toFile())) {
@@ -248,7 +248,7 @@ public class TransxCommand implements Runnable {
                 .mediaFormat(MediaFormat.MP4)
                 .outputBucketName(bucketName)
                 .outputKey(outputKey)
-                .subtitles(srt)
+                .subtitles(vtt)
                 .build();
         transcribe.startTranscriptionJob(req);
         awaitTranscriptionDone(jobName);

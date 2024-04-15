@@ -11,12 +11,13 @@ ports:
 
 vscode:
   extensions:
+    - redhat.vscode-yaml
     - redhat.vscode-xml
     - redhat.java
-    - vscjava.vscode-java-debug
-    - vscjava.vscode-java-test
     - redhat.vscode-quarkus
     - redhat.vscode-microprofile
-    - sonarsource.sonarlint-vscode
-    - GabrielBB.vscode-lombok
+    - ms-azuretools.vscode-docker
     - ms-python.python
+    - vscjava.vscode-java-debug
+    - vscjava.vscode-java-test
+    - enkia.tokyo-night
