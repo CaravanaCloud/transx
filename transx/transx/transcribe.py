@@ -23,7 +23,7 @@ def start_transcription_job(file_path, job_name):
         media_format = metadata['format']
         bucket_name = metadata.get('bucket', None)
         key = metadata.get('key', None)
-        output_key =  f"{key}/transcribe/{job_name}"
+        output_key =  f"{key}/transcribe/{job_name}/{key}"
         subs = { 'Formats': ['vtt','srt'] }
         if bucket_name and key:
             video_uri = f"s3://{bucket_name}/{key}"
@@ -74,8 +74,7 @@ def write_transcription_metadata(file_path, status):
     # read json from file_path as metadata
     with open(file_path) as f:
         metadata = json.load(f)
-        metadata['transcribe_status']
-        metadata['transcribe_status'] = status
+        print("TODO: write transcription result metadata")
     # write json to file_path
     with open(file_path, 'w') as f:
         json.dump(metadata, f)
