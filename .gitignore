@@ -3,3 +3,5 @@ target
 test/*.storage
 .vscode
 .idea
+__pycache__
+dist
