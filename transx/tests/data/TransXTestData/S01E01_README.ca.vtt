@@ -1,0 +1,281 @@
+WEBVTT
+
+0
+00:00:04.119 --> 00:00:06.849
+Hola i benvinguts a fer les coses amb Quercus
+
+1
+00:00:07.179 --> 00:00:07.210
+a
+
+2
+00:00:07.329 --> 00:00:08.340
+aquesta formació,
+
+3
+00:00:08.439 --> 00:00:11.130
+anem a practicar com construir i
+
+4
+00:00:11.140 --> 00:00:14.680
+oferir solucions de programari amb Java modern i
+
+5
+00:00:15.180 --> 00:00:15.210
+Quus.
+
+6
+00:00:15.720 --> 00:00:16.649
+Si no coneixes Quercus
+
+7
+00:00:16.909 --> 00:00:20.180
+però, és un gran marc per a la plataforma Java
+
+8
+00:00:20.319 --> 00:00:24.620
+que permet als desenvolupadors construir grans aplicacions per gran,
+
+9
+00:00:24.819 --> 00:00:25.489
+Vull dir,
+
+10
+00:00:25.790 --> 00:00:30.260
+desenvolupant en una bona productivitat en un bon flux amb grans eines
+
+11
+00:00:30.270 --> 00:00:35.659
+i en l'altre costat produint aplicacions realment eficients i optimitzades.
+
+12
+00:00:35.669 --> 00:00:39.250
+Així que anem a aprendre tot sobre això durant el curs.
+
+13
+00:00:39.799 --> 00:00:44.770
+La raó per la qual crec que aquest curs és realment important és ajudar-vos a fer les coses.
+
+14
+00:00:44.779 --> 00:00:45.409
+Així
+
+15
+00:00:45.659 --> 00:00:48.340
+hi ha una gran quantitat de contingut per aquí sobre
+
+16
+00:00:48.520 --> 00:00:53.900
+Java i les teories, però no tant sobre la pràctica, com
+
+17
+00:00:54.069 --> 00:01:00.125
+tancar el bitllet, com fer la solució i després tan bé com sigui possible.
+
+18
+00:01:00.134 --> 00:01:05.095
+Així que aquí aquest és l'objectiu d'aquest curs, no vaig a anar a través
+
+19
+00:01:05.235 --> 00:01:08.294
+els conceptes bàsics del llenguatge Java. Així
+
+20
+00:01:08.425 --> 00:01:12.294
+si no està familiaritzat amb Java i la programació en general,
+
+21
+00:01:12.305 --> 00:01:14.584
+podria ser una bona idea fer una ullada a
+
+22
+00:01:14.815 --> 00:01:16.455
+Java. Però no us preocupeu,
+
+23
+00:01:16.614 --> 00:01:19.815
+Vaig a anar a través dels conceptes en detall
+
+24
+00:01:19.824 --> 00:01:22.455
+i a fons a mesura que anem passant pel curs.
+
+25
+00:01:22.885 --> 00:01:24.495
+Així que això és uh
+
+26
+00:01:24.845 --> 00:01:27.095
+la raó per la qual crec que és genial
+
+27
+00:01:27.529 --> 00:01:32.190
+i espero que us ajudi a construir i oferir les vostres solucions.
+
+28
+00:01:32.879 --> 00:01:36.500
+I què anem a construir exactament aquí?
+
+29
+00:01:36.680 --> 00:01:39.150
+Així que em centraré en tres àrees.
+
+30
+00:01:39.160 --> 00:01:43.120
+Tenim tres seccions en aquest curs en primer lloc sobre el final posterior.
+
+31
+00:01:43.129 --> 00:01:48.300
+Així que escriure Jason serveis de descans, accés a base de dades, aquest tipus de coses
+
+32
+00:01:48.449 --> 00:01:54.569
+enfocat a la integració d'aplicacions. Així que si ja tens un front end
+
+33
+00:01:54.680 --> 00:01:56.849
+o si voleu exposar les vostres dades,
+
+34
+00:01:57.199 --> 00:01:59.500
+això pot ser interessant per a vostè.
+
+35
+00:01:59.639 --> 00:02:02.819
+I aquí és on la majoria dels desenvolupadors comencen a utilitzar Quus
+
+36
+00:02:03.290 --> 00:02:04.379
+Crec. Així
+
+37
+00:02:04.550 --> 00:02:06.550
+aquí és on començarem
+
+38
+00:02:06.800 --> 00:02:09.500
+després d'això. El segon mòdul és
+
+39
+00:02:09.860 --> 00:02:11.970
+boding i frontal. Així
+
+40
+00:02:12.550 --> 00:02:17.740
+podding és un marc molt agradable per produir aplicacions web, genial
+
+41
+00:02:18.009 --> 00:02:23.169
+aplicacions per a tot tipus de pantalles i requisits. Així
+
+42
+00:02:23.679 --> 00:02:26.779
+hi ha moltes, moltes coses a explicar
+
+43
+00:02:27.020 --> 00:02:29.940
+VING. I espero que ens emocionem tant com jo
+
+44
+00:02:30.149 --> 00:02:33.360
+quan arribem a la construcció d'aplicacions web, frontals,
+
+45
+00:02:33.710 --> 00:02:35.940
+crues i totes aquestes coses.
+
+46
+00:02:36.309 --> 00:02:42.130
+I un cop tenim el front end i el back end fet, hem de desplegar-lo en algun lloc,
+
+47
+00:02:42.139 --> 00:02:42.350
+oi?
+
+48
+00:02:42.360 --> 00:02:47.570
+Hem de treure'l del nostre propi ordinador i comprovar si funciona en el núvol.
+
+49
+00:02:47.800 --> 00:02:49.380
+Així que per fer que això passi,
+
+50
+00:02:49.520 --> 00:02:55.080
+utilitzarem el kit de desenvolupament en el núvol, el CD K d'AWS
+
+51
+00:02:55.440 --> 00:03:01.889
+que ens permet utilitzar java per construir els nostres desplegaments sobre aws mitjançant
+
+52
+00:03:02.039 --> 00:03:04.119
+el seu servei anomenat formació de núvol.
+
+53
+00:03:04.470 --> 00:03:07.460
+També aprendrem tot sobre això. Així
+
+54
+00:03:07.750 --> 00:03:13.369
+amb això espero que pugueu oferir les solucions que construïu,
+
+55
+00:03:13.529 --> 00:03:17.000
+ja sigui un extrem frontal o un extrem posterior o
+
+56
+00:03:17.429 --> 00:03:18.729
+el que hi hagi entremig.
+
+57
+00:03:19.369 --> 00:03:20.630
+Em pots trobar
+
+58
+00:03:20.880 --> 00:03:25.149
+en qualsevol mitjà de comunicació social com bomber Jay.
+
+59
+00:03:25.309 --> 00:03:30.029
+Estaria encantat de prendre les seves preguntes i parlar més
+
+60
+00:03:30.300 --> 00:03:31.119
+sobre cus
+
+61
+00:03:31.639 --> 00:03:35.940
+i com posar-ho en pràctica en el teu context
+
+62
+00:03:36.169 --> 00:03:37.710
+i aprendre una mica més
+
+63
+00:03:37.869 --> 00:03:43.339
+sobre les seves aplicacions de situació i resoldre qualsevol dubte que pugui tenir.
+
+64
+00:03:43.410 --> 00:03:47.350
+Així que no dubteu a arribar. M'encantaria continuar aquesta conversa.
+
+65
+00:03:47.750 --> 00:03:50.210
+El meu nom és Julio Furman. Sóc
+
+66
+00:03:50.470 --> 00:03:51.929
+a Red Hat. Ara
+
+67
+00:03:52.070 --> 00:03:55.220
+Treballo a l'equip de openshift. Però abans d'això,
+
+68
+00:03:55.500 --> 00:04:01.460
+He treballat per Amazon Barland i més de 20 anys com a desenvolupador professional.
+
+69
+00:04:01.860 --> 00:04:05.770
+Així que espero que gaudiu d'aquest curs. I comencem de seguida.
