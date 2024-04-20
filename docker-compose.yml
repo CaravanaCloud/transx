@@ -1,0 +1,31 @@
+services:
+  transx_db:
+    container_name: transx_db
+    network_mode: host
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  transx_web:
+    container_name: transx_web
+    network_mode: host
+    build: ./transx_web
+    command: pwd; find .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./web_interface:/usr/src/app  # Map project directory to container
+    depends_on:
+      - transx_db
+    environment:
+      - DJANGO_SETTINGS_MODULE=myproject.settings
+      - DATABASE_URL=postgres://user:password@db:5432/mydatabase
+
+volumes:
+  db-data:
