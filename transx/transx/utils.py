@@ -2,10 +2,10 @@ import platform
 import uuid
 from datetime import datetime
 
-version = "0.0.1"
+semver = "0.0.1"
 
 def version():
-    return version
+    return semver
 
 def system_id():
     system_info = platform.system() + platform.release() + platform.version()

@@ -21,18 +21,18 @@ def calculate_md5(file_path):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def check_synced(file_path, etag):
-    """Check if the file is already synced with S3 by comparing stored ETag."""
+def check_synced(file_path, md5):
+    """Check if the file is already synced with S3 by comparing stored md5."""
     json_path = file_path.with_suffix('.transx.json')
     try:
         with open(json_path) as json_file:
             data = json.load(json_file)
-            if data['etag'] == etag:
+            if data['md5'] == md5:
                 logging.info(f"No changes detected for {file_path}, skipping upload.")
                 print(f"File {file_path} has not changed. Skipping upload.")
                 return True
     except (FileNotFoundError, KeyError, json.JSONDecodeError):
-        print(f"No sync record for {file_path}, or sync record is corrupted. Proceeding with upload.")
+        print(f"No sync record for {file_path}. Uploading...")
     return False
 
 def ensure_bucket_exists(bucket_name):
@@ -70,25 +70,28 @@ def sync(directory, glob_pattern, bucket_name):
     files = get_files(directory, glob_pattern)  # Now calling ls() which returns the list of files
 
     for file_path in files:
-        etag = calculate_md5(str(file_path))
-        if not check_synced(file_path, etag):
+        md5 = calculate_md5(str(file_path))
+        if not check_synced(file_path, md5):
             try:
                 s3_client.upload_file(
                     Filename=str(file_path),
                     Bucket=bucket_name,
                     Key=file_path.name
                 )
+                print(str(res))
                 print(f"Uploaded {file_path} to S3 bucket '{bucket_name}'.")
                 format = file_path.suffix.replace('.', '')
                 with open(str(file_path)+('.transx.json'), 'w') as json_file:
                     meta = {
-                        'etag': etag,
+                        'md5': md5,
                         'file': file_path.name,
                         'bucket': bucket_name,
                         'key': file_path.name,
                         'format': format
                     }
-                    json.dump(meta, json_file)
+                    json.dump(obj=meta, 
+                            fp=json_file,
+                            indent=2)
             except ClientError as e:
                 print(f"Failed to upload {file_path}: {e}")
 

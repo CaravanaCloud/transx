@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "transx"
 version = "0.1.0"
-description = ""
+description = "Video transcribing and translation tools"
 authors = ["Julio Faerman <356476+faermanj@users.noreply.github.com>"]
 readme = "README.md"
 
@@ -17,9 +17,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-main = "transx.main:main"
+transx = "transx.main:main"
 version = "transx.version:print_version"
-ls = "transx.ls:ls"
+list = "transx.ls:ls"
 sync = "transx.sync:sync"
 clean = "transx.clean:clean"
 transcribe = "transx.transcribe:transcribe"

@@ -4,7 +4,8 @@ from .utils import *
 
 settings = Dynaconf(
     envvar_prefix="TRANSX",
-    settings_files=['settings.toml'],
+    root_path=".",
+    settings_files=['settings.tom, "*.terms.yaml" '],
     environments=True,
     load_dotenv=True,
 )
