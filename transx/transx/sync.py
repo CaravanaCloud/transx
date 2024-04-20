@@ -77,17 +77,23 @@ def sync(directory, glob_pattern, bucket_name):
                 )
                 print(f"Uploaded {file_path} to S3 bucket '{bucket_name}'.")
                 format = file_path.suffix.replace('.', '')
-                with open(str(file_path)+('.transx.json'), 'w') as json_file:
-                    meta = {
+                dir = str(file_path.parent.resolve())
+                file_name = file_path.name
+                meta_file = str(file_path)+('.transx.json')
+                with open(meta_file, 'w') as json_file:
+                    obj = {
                         'md5': md5,
-                        'file': file_path.name,
+                        'file': file_name,
+                        'dir': dir,
                         'bucket': bucket_name,
                         'key': file_path.name,
                         'format': format
                     }
-                    json.dump(obj=meta, 
-                            fp=json_file,
-                            indent=2)
+                    json.dump(
+                        obj=obj, 
+                        fp=json_file,
+                        indent=2)
+                print(f"Metadata file created for {file_path}.")
             except ClientError as e:
                 print(f"Failed to upload {file_path}: {e}")
 
