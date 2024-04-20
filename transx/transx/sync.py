@@ -6,12 +6,9 @@ from hashlib import md5
 from botocore.exceptions import ClientError
 from .ls import * 
 from .config import Config
+from .logs import *
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-
-# Create an S3 client
-s3_client = boto3.client('s3')
+s3 = boto3.client('s3')
 
 def calculate_md5(file_path):
     """Calculate MD5 hash of the file for integrity checking."""
@@ -28,7 +25,7 @@ def check_synced(file_path, md5):
         with open(json_path) as json_file:
             data = json.load(json_file)
             if data['md5'] == md5:
-                logging.info(f"No changes detected for {file_path}, skipping upload.")
+                info(f"No changes detected for {file_path}, skipping upload.")
                 print(f"File {file_path} has not changed. Skipping upload.")
                 return True
     except (FileNotFoundError, KeyError, json.JSONDecodeError):
@@ -38,13 +35,13 @@ def check_synced(file_path, md5):
 def ensure_bucket_exists(bucket_name):
     """Ensure the S3 bucket exists, and create it if it does not."""
     try:
-        s3_client.head_bucket(Bucket=bucket_name)
+        s3.head_bucket(Bucket=bucket_name)
         print(f"Bucket '{bucket_name}' exists. Proceeding with file uploads.")
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
             print(f"Bucket '{bucket_name}' does not exist. Creating bucket...")
             try:
-                s3_client.create_bucket(Bucket=bucket_name)
+                s3.create_bucket(Bucket=bucket_name)
                 print(f"Bucket '{bucket_name}' created successfully.")
             except ClientError as ce:
                 print(f"Failed to create bucket '{bucket_name}': {ce}")
@@ -73,12 +70,11 @@ def sync(directory, glob_pattern, bucket_name):
         md5 = calculate_md5(str(file_path))
         if not check_synced(file_path, md5):
             try:
-                s3_client.upload_file(
+                s3.upload_file(
                     Filename=str(file_path),
                     Bucket=bucket_name,
                     Key=file_path.name
                 )
-                print(str(res))
                 print(f"Uploaded {file_path} to S3 bucket '{bucket_name}'.")
                 format = file_path.suffix.replace('.', '')
                 with open(str(file_path)+('.transx.json'), 'w') as json_file:
