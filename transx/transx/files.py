@@ -8,7 +8,7 @@ from .utils import  *
 def transx_path(directory):
     if not directory:
         directory = str(Path.cwd())
-    return Config.resolve(Config.TRANSX_PATH, directory)
+    return resolve(Config.TRANSX_PATH, directory)
 
 
 def find_medias(directory):

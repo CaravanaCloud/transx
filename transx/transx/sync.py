@@ -95,26 +95,31 @@ def command(directory, bucket_name):
 
 def run(directory, bucket_name):
     """Sync files to S3, checking each file for changes and uploading only if necessary."""
-    directory = Config.resolve(Config.TRANSX_PATH, directory)
-    bucket_name = Config.resolve(Config.S3_BUCKET_NAME, bucket_name)
+    directory = resolve(Config.TRANSX_PATH, directory)
+    bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
+    info(f"Syncing files in {directory} to s3://{bucket_name}")
     ensure_bucket_exists(bucket_name)
     all_files = files.find_all(directory)
     out_files = []
+    out_dirs = set([])
     for file_path in all_files:
-        sync_file(bucket_name, file_path)
+        sync_file(bucket_name, directory, file_path)
         result = {
             "file": file_path,
+            "dir": file_path.parent
         }
+        out_dirs.add(file_path.parent)
         out_files.append(result)
     result = {
         "status": "ok",
-        "files": out_files
+        "files": out_files,
+        "dirs": out_dirs
     }
     return result
 
 
-def sync_file(bucket_name, file_path):
-    s3_key = file_key(file_path)
+def sync_file(bucket_name, directory, file_path):
+    s3_key = file_key(directory, file_path)
     if is_synced(file_path, bucket_name, s3_key):
         info(f"File {file_path} in sync with s3://{bucket_name}/{s3_key}")
         return

@@ -3,143 +3,110 @@ import time
 from pprint import pformat
 from .files import *
 from .utils import *
-from . import cmd, terms
+from . import cmd, terms, sync
+
 
 translate = boto3.client('translate')
 
 
-def translate_key(file_path, job_name):
+def transcribe_key(file_path, job_name):
     key = file_key(file_path)
-    return f"{key}/translate/{job_name}/"
+    return f"{key}/transcribe/{job_name}/"
 
 
-def start_transcription_job(file_path, bucket_name, job_name):
-    """Starts a transcription job for the specified file."""
-    file_name = file_path.name
-    file_dir = file_path.parent.name
-    media_format = file_path.suffix[1:] if file_path.suffix else None
-    output_key = translate_key(file_path, job_name)
-
-    if not (bucket_name and output_key):
-        error(f"Missing bucket[{bucket_name}] name or key[{output_key}] for {file_name}")
-        return None
-    subs = {'Formats': ['vtt', 'srt']}
-    media_key = file_key(file_path)
-    media_uri = s3_url(bucket_name, media_key)
-    media = {'MediaFileUri': media_uri}
+def start_translate_job(the_dir, bucket_name, job_name):
+    """Starts a translate job for the specified dir."""
     job_info = {
-        'FileDir': file_dir,
-        'FileName': file_name,
-        'TranscriptionJobName': job_name,
-        'Media': media,
-        'MediaFormat': media_format,
-        'OutputBucketName': bucket_name,
-        'OutputKey': output_key,
-        'IdentifyMultipleLanguages': True,
-        'Subtitles': subs
+        'FileDir': the_dir,
     }
     pretty_job_info = pformat(job_info)
-    info(f"Starting transcription job.\n{pretty_job_info}")
+    info(f"Starting translate job.\n{pretty_job_info}")
+    input_uri = s3_url_abs(bucket_name, dir_key(the_dir))
+    output_uri = s3_url_abs(bucket_name,  "translate", job_name)
+    role_arn = check_role()
+    src_lang = resolve(Config.TRANSX_SOURCE_LANG)
+    tgt_lang_str = resolve(Config.TRANSX_TARGET_LANG)
+    tgt_langs = tgt_lang_str.split(",")
+    job_info = {
+        'JobName': job_name,
+        'InputUri': input_uri,
+        'OutputUri': output_uri,
+        'DataAccessRoleArn': role_arn,
+        'SourceLanguageCode': src_lang,
+        'TargetLanguageCodes': tgt_langs
+    }
+    pretty_job_info = pformat(job_info)
+    info(f"Starting translate job.\n{pretty_job_info}")
     try:
-        translate.start_transcription_job(
-            TranscriptionJobName=job_name,
-            Media=media,
-            MediaFormat=media_format,
-            OutputBucketName=bucket_name,
-            OutputKey=output_key,
-            IdentifyMultipleLanguages=True,
-            Subtitles=subs
+        translate.start_text_translation_job(
+            JobName=job_name,
+            InputDataConfig={
+                'S3Uri': input_uri,
+                'ContentType': 'text/plain'
+            },
+            OutputDataConfig={
+                'S3Uri': output_uri
+            },
+            DataAccessRoleArn=role_arn,
+            SourceLanguageCode=src_lang,
+            TargetLanguageCodes=tgt_langs
         )
         return job_info
     except ClientError as e:
-        error(f"Failed to start transcription job for {file_name}: {e}")
+        error(f"Failed to start translate job for {dir}: {e}")
         return None
 
 
 def wait_job_done(file_path, job_name):
-    """Polls the transcription job status until completion or failure."""
+    """Polls the translate job status until completion or failure."""
     while True:
         try:
-            response = translate.get_transcription_job(TranscriptionJobName=job_name)
-            job = response['TranscriptionJob']
-            status = job['TranscriptionJobStatus']
+            # response = transcribe.get_translate_job(jTranslateJobName=job_name)
+            # job = response['jTranslateJob']
+            status = 'COMPLETED'
             info(f"Current status of job {job_name}: {status}")
             if status in ['COMPLETED', 'FAILED']:
-                job_pp = pformat(job, indent=2)
+                job_pp = pformat({}, indent=2)
                 info(job_pp)
-                write_sibling(file_path, ".translate.txt", job_pp)
-                return job
+                write_sibling(file_path, ".transcribe.txt", job_pp)
+                return {}
             time.sleep(60)
         except ClientError as e:
             error(f"Error fetching job status for {job_name}: {e}")
             return None
 
 
-def fix_terms(file_name, job_info):
-    file_path = Path(file_name)
-    exists = file_path.exists()
-    if not exists:
-        return
-    # replace .translate.Xxx extension with .Xxx
-    lang_code = "en-US"
-    if job_info:
-        langs = job_info.get('LanguageCodes')
-        if langs and len(langs):
-            first = langs[0]
-            lang_code = first.get('LanguageCode')
-            return lang_code
-    out_path = file_path.with_name(file_path.name.replace(".translate.", f".{lang_code}."))
-    terms.fix_terms(file_path, lang_code, out_path)
-
-
 def download(file_path, bucket_name, job_info):
-    """Downloads the transcription results from S3."""
-    job_name = job_info.get('TranscriptionJobName')
-    info(f"Downloading transcriptions for {job_name}")
-    file_name = file_path.name
-    file_dir = file_path.parent
-    bucket = bucket_name
+    """Downloads the translate results from S3."""
+    info("Download translate results.")
 
-    output_prefix = translate_key(file_path, job_name)
-
-    transc_key = job_name
-    transc_file = file_name + ".translate.json"
-    transc_out = os.path.join(file_dir, transc_file)
-    get_object(bucket, output_prefix, transc_key, transc_out)
-    fix_terms(transc_out, job_info)
-
-    vtt_key = job_name + ".vtt"
-    vtt_file = file_name + ".translate.vtt"
-    vtt_out = os.path.join(file_dir, vtt_file)
-    get_object(bucket, output_prefix, vtt_key, vtt_out)
-    fix_terms(vtt_out, job_info)
-
-    srt_key = job_name + ".srt"
-    srt_file = file_name + ".translate.srt"
-    srt_out = os.path.join(file_dir, srt_file)
-    get_object(bucket, output_prefix, srt_key, srt_out)
-    fix_terms(srt_out, job_info)
 
 @cmd.cli.command('translate')
 @click.option('--directory', default=None, help='Directory to search in')
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
     """Transcribes all audio files in the specified directory matching the glob pattern."""
-    medias = find_medias(directory)
-    bucket_name = Config.resolve(Config.S3_BUCKET_NAME, bucket_name)
-    info(f"Found {len(medias)} files to translate.")
-    for media in medias:
-        file_name = media.name
-        job_name = f"translate_{file_name}_{minutestamp()}"
-        info(f"Starting transcription job for {file_name}.")
-        job_info = start_transcription_job(media, bucket_name, job_name)
+    bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
+    directory = resolve(Config.TRANSX_PATH, directory)
+    sync_res = sync.run(directory, bucket_name)
+    sync_ok = sync_res.get('status') == 'ok'
+    if not sync_ok:
+        error("Failed to sync files.")
+        return
+    synced_dirs = sync_res.get('dirs')
+    info(f"Found {len(synced_dirs)} synced dirs to transcribe.")
+    for dir in synced_dirs:
+        dir_name = dir.name
+        job_name = f"transcribe_{dir_name}_{minutestamp()}"
+        info(f"Starting translate job for {dir_name}.")
+        job_info = start_translate_job(dir, bucket_name, job_name)
         if not job_info:
-            error(f"Failed to start transcription job for {file_name}.")
+            error(f"Failed to start translate job for {dir_name}.")
             continue
-        info("Transcription job started.")
-        done_job = wait_job_done(media, job_name)
+        info("jTranslate job started.")
+        done_job = wait_job_done(dir, job_name)
         status = "ERROR"
         if done_job:
             status = "DONE"
-            download(media, bucket_name, job_info)
-        info(f"Transcribe job completed. status[{status}] file[{file_name}].")
+            download(dir, bucket_name, job_info)
+        info(f"Transcribe job completed. status[{status}] dir[{dir_name}].")

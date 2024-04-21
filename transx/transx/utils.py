@@ -6,10 +6,12 @@ import json
 from .logs import *
 from botocore.exceptions import ClientError
 import boto3
+from .config import *
 
+semver = "0.0.1"
 
 s3 = boto3.client('s3')
-semver = "0.0.1"
+iam = boto3.client('iam')
 
 
 def version():
@@ -29,6 +31,10 @@ def minutestamp():
     return datetime.now().strftime("%Y%m%d%H%M")
 
 
+def secondstamp():
+    return datetime.now().strftime("%Y%m%d%H%M%S")
+
+
 def to_json(obj, fp):
     return json.dump(obj, fp, indent=2)
 
@@ -37,35 +43,53 @@ def user_name():
     return os.environ.get("USER", "anonymous")
 
 
-def _key(folder_name, *key_parts):
+def s3_key(data_class, *key_parts):
     username = user_name()
     key_name = "/".join(key_parts)
-    return f"{username}/{folder_name}/{key_name}"
+    result = f"{username}/{data_class}/{key_name}"
+    info(f"s3_key({data_class}, {str(key_parts)}) = {result}")
+    return result
 
 
-def file_key(file_path):
-    folder_name = file_path.parent.name
-    file_name = file_path.name
-    return _key(folder_name, file_name)
+def s3_url_abs(bucket, *key_parts):
+    key_name = "/".join(key_parts)
+    result = f"s3://{bucket}/{key_name}"
+    info(f"s3_url_abs({bucket}, {str(key_parts)}) = {result}")
+    return result
+
+
+def file_key(directory, file_path):
+    relative_path = file_path.relative_to(directory)
+    result = s3_key("user", str(relative_path))
+    info(f"file_key({directory}, {file_path}) = {result}")
+    return result
+
+
+def dir_key(the_dir):
+    folder_name = the_dir.name
+    return s3_key(folder_name)
 
 
 def child_key(file_path, key_prefix, key_name):
     folder_name = file_path.parent.name
-    result = _key(folder_name, key_prefix, key_name)
+    result = s3_key("user", folder_name, key_prefix, key_name)
     return result
 
 
-def s3_url(bucket, key):
-    return f"s3://{bucket}/{key}"
+def transcribe_key(job_name):
+    job_file = job_name.split("__")[1]
+    job_key = job_file.split(".")[0]
+    result = s3_key("transcribe",   job_name, job_key)
+    return result
 
 
-def get_object(bucket, prefix, file_name, output_file = None):
+def get_object(bucket, prefix, file_name, output_file=None):
     """Downloads the transcription results from S3."""
     object_key = prefix
     if not object_key.endswith("/"):
         object_key += "/"
     object_key += file_name
-    object_url = s3_url(bucket, object_key)
+    object_url = s3_url_abs(bucket, object_key)
     try:
         response = s3.get_object(Bucket=bucket, Key=object_key)
         if not output_file:
@@ -84,3 +108,104 @@ def write_sibling(file_path, sibling_ext, sibling_data):
         to_json(sibling_data, f)
     return sibling_path
 
+
+def role_exists(role_name):
+    if not role_name:
+        return False
+    try:
+        res = iam.get_role(RoleName=role_name)
+        result = res.get('Role')
+        return result is not None
+    except ClientError as e:
+        info(f"Role {role_name} does not exist. {e}")
+        return False
+
+
+def create_role(role_name):
+    trust_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "translate.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }
+    try:
+        res = iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy)
+        )
+        info(f"Created role {role_name}: {res}")
+    except ClientError as e:
+        error(f"Failed to create role {role_name}: {e}")
+
+
+def assign_policy(role_name, policyName):
+    try:
+        res = iam.attach_role_policy(
+            RoleName=role_name,
+            PolicyArn=f"arn:aws:iam::aws:policy/{policyName}"
+        )
+        info(f"Attached policy {policyName} to role {role_name}: {res}")
+    except ClientError as e:
+        error(f"Failed to attach policy {policyName} to role {role_name}: {e}")
+    pass
+
+
+def get_role_arn(role_name):
+    res = iam.get_role(RoleName=role_name)
+    return res.get('Role').get('Arn')
+
+
+def check_role():
+    role_name = resolve(Config.TRANSX_ROLE_NAME, None)
+    exists = role_exists(role_name)
+    if exists:
+        info(f"Role {role_name} exists.")
+        return get_role_arn(role_name)
+    create_role(role_name)
+    assign_policy(role_name, "AmazonS3FullAccess")
+    exists = role_exists(role_name)
+    if exists:
+        info(f"Role {role_name} created.")
+        return role_name
+    return None
+
+_defaults = {
+        Config.TRANSX_PATH:  os.getcwd(),
+        Config.TRANSX_BUCKET_NAME: f'transx.s3.{datestamp()}',
+        Config.TRANSX_SOURCE_LANG:  'en',
+        Config.TRANSX_TARGET_LANG: 'pt,es,ca',
+        Config.TRANSX_ROLE_NAME: 'transx-role'
+}
+
+settings_cache = {}
+
+
+def resolve(setting, command_line_value=None):
+    if setting in settings_cache:
+        return settings_cache[setting]
+    result = _resolve(setting, command_line_value)
+    settings_cache[setting] = result
+    return result
+
+
+def _resolve(setting, command_line_value=None):
+    """
+    Resolve the value of a setting with the priority:
+    command-line option > dynaconf setting > static default.
+    """
+    if command_line_value is not None:
+        info(f"Setting {setting.name} [cli]= {command_line_value}")
+        return command_line_value
+    if settings.exists(setting):
+        setting_value = settings.get(setting)
+        info(f"Setting {setting.name} [dynaconf]= {setting_value}")
+        return setting_value
+    default_val = _defaults.get(setting)
+    info(f"Setting {setting.name} [default]= {default_val}")
+    return default_val
