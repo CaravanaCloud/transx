@@ -4,7 +4,7 @@ from pprint import pformat
 from .utils import *
 from . import cmd, terms, sync
 from .logs import *
-from tenacity import retry, wait_exponential, stop_after_attempt
+from tenacity import retry, wait_exponential, stop_after_delay
 
 transcribe = boto3.client('transcribe')
 
@@ -53,7 +53,7 @@ def start_transcribe_job(directory, file_path, bucket_name, job_name):
         return None
 
 
-@retry(wait=wait_exponential(multiplier=2, min=30, max=60 * 60), stop=stop_after_attempt(30))
+@retry(wait=wait_exponential(multiplier=1.5, min=30, max=2*60), stop=stop_after_delay(60*60))
 def wait_job_done(file_path, job_name):
     """Polls the transcribe job status until completion or failure."""
     try:
@@ -86,7 +86,7 @@ def fix_terms(file_name, job_info):
             lang_code = first.get('LanguageCode')
             return lang_code
     out_path = file_path.name.replace(".transcribe.", f".{lang_code}.")
-    info(f"Fixing terms in [{file_name}] in [{lang_code}] to [{out_path}]")
+    info(f"* Fixing terms in [{file_name}] in [{lang_code}] to [{out_path}]")
     terms.fix_terms(file_path, lang_code, out_path)
 
 
@@ -111,7 +111,9 @@ def download(file_path, bucket_name, job_info):
         out_ext = ".transcribe." + object_ext
         out_key = object_stem + out_ext
         dl_file_out = subs_dir / out_key
+        info(f"* Downloading [{uri}] to [{dl_file_out}]")
         get_object(bucket_name, object_prefix, object_key, dl_file_out)
+        info(f"* Fixing [{dl_file_out}]")
         fix_terms(dl_file_out, job_info)
         info(f"Downloaded [{uri}] to [{dl_file_out}]")
 

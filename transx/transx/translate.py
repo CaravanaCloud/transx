@@ -2,7 +2,7 @@ import click
 from pprint import pformat
 from .utils import *
 from . import cmd, sync
-from tenacity import retry, wait_exponential, stop_after_attempt
+from tenacity import retry, wait_exponential, stop_after_delay
 from datetime import datetime
 import time
 
@@ -64,7 +64,7 @@ def start_translate_job(translate_prefix, bucket_name, job_name):
 _done_status = ["COMPLETED", "COMPLETED_WITH_ERROR", "FAILED", "STOPPED", "STOP_REQUESTED"]
 
 
-@retry(wait=wait_exponential(multiplier=2, min=30, max=60 * 60), stop=stop_after_attempt(30))
+@retry(wait=wait_exponential(multiplier=1.5, min=30, max=2*60), stop=stop_after_delay(60*60))
 def wait_job_done(subtitle_prefix, job_info):
     """Polls the translate job status until completion or failure."""
     job_id = job_info.get('JobId')
