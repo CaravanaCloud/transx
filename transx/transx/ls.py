@@ -6,7 +6,7 @@ from .config import Config
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-def get_files(directory, glob_pattern):
+def get_files(directory):
     """
     Retrieve a list of files matching the glob pattern in the specified directory, recursively.
     """

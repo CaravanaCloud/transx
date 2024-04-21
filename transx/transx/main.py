@@ -1,14 +1,17 @@
 from .cmd import cli
-from . import about
-from . import sync
+from . import about, sync, transcribe, translate, config
 
 _commands = [
     about.command,
-    sync.command
+    config.command,
+    sync.command,
+    transcribe.command,
+    translate.command,
 ]
 
 
 def main():
+    config.init()
     for command in _commands:
         cli.add_command(command)
     cli(obj={})

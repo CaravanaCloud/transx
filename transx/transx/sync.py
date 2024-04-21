@@ -6,33 +6,65 @@ from .ls import *
 from .config import Config
 from .logs import *
 from . import cmd
-import json
+from . import files
+
+DEFAULT_S3CMD_PART_SIZE = 15728640
+
+DEFAULT_AWS_PART_SIZE = 8388608
 
 s3 = boto3.client('s3')
 
 
-def calculate_md5(file_path):
-    """Calculate MD5 hash of the file for integrity checking."""
-    hash_md5 = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+def calc_etag(inputfile, partsize):
+    md5_digests = []
+    with open(inputfile, 'rb') as f:
+        for chunk in iter(lambda: f.read(partsize), b''):
+            md5_digests.append(hashlib.md5(chunk).digest())
+    return hashlib.md5(b''.join(md5_digests)).hexdigest() + '-' + str(len(md5_digests))
 
 
-def check_synced(file_path, md5):
+def factor_of_1mb(filesize, num_parts):
+    x = filesize / int(num_parts)
+    y = x % 1048576
+    return int(x + 1048576 - y)
+
+
+def possible_partsizes(filesize, num_parts):
+    return lambda partsize: partsize < filesize and (float(filesize) / float(partsize)) <= num_parts
+
+
+def is_synced(file_path, s3_bucket, s3_key):
     """Check if the file is already synced with S3 by comparing stored md5."""
-    json_path = file_path.with_suffix('.transx.json')
+    # From https://teppen.io/2018/10/23/aws_s3_verify_etags/
+    # Get the S3 object's metadata (including ETag, which is usually the MD5 checksum)
     try:
-        with open(json_path) as json_file:
-            data = json.load(json_file)
-            if data['md5'] == md5:
-                info(f"No changes detected for {file_path}, skipping upload.")
-                print(f"File {file_path} has not changed. Skipping upload.")
-                return True
-    except (FileNotFoundError, KeyError, json.JSONDecodeError):
-        print(f"No sync record for {file_path}. Uploading...")
-    return False
+        response = s3.head_object(Bucket=s3_bucket, Key=s3_key)
+        s3_etag = response.get('ETag', None)
+
+        if s3_etag:
+            s3_etag = s3_etag.strip('"')
+            filesize = os.path.getsize(file_path)
+            etag_arr = s3_etag.split('-')
+            if len(etag_arr) == 1:
+                local_etag = etag_arr[0]
+                return s3_etag == local_etag
+            if len(etag_arr) == 2:
+                num_parts = int(etag_arr[1])
+                default_part_sizes = [
+                    DEFAULT_AWS_PART_SIZE,
+                    DEFAULT_S3CMD_PART_SIZE,
+                    factor_of_1mb(filesize, num_parts)
+                ]
+                for part_size in filter(possible_partsizes(filesize, num_parts), default_part_sizes):
+                    local_etag = calc_etag(file_path, part_size)
+                    if s3_etag == local_etag:
+                        return True
+
+        return False
+    except ClientError as e:
+        # Handle the case where the S3 object does not exist or an error occurs
+        debug(f"Key not found {s3_key}: {e}")
+        return False
 
 
 def ensure_bucket_exists(bucket_name):
@@ -56,43 +88,41 @@ def ensure_bucket_exists(bucket_name):
 
 @cmd.cli.command('sync')
 @click.option('--directory', default=None, help='Directory to search in')
-@click.option('--glob_pattern', default=None, help='Glob pattern to filter files by')
 @click.option('--bucket_name', default=None, help='Bucket name')
-def command(directory, glob_pattern, bucket_name):
+def command(directory, bucket_name):
+    run(directory, bucket_name)
+
+
+def run(directory, bucket_name):
     """Sync files to S3, checking each file for changes and uploading only if necessary."""
     directory = Config.resolve(Config.TRANSX_PATH, directory)
-    glob_pattern = Config.resolve(Config.TRANSX_GLOB, glob_pattern)
     bucket_name = Config.resolve(Config.S3_BUCKET_NAME, bucket_name)
     ensure_bucket_exists(bucket_name)
-    files = get_files(directory, glob_pattern)
-    for file_path in files:
+    all_files = files.find_all(directory)
+    out_files = []
+    for file_path in all_files:
         sync_file(bucket_name, file_path)
+        result = {
+            "file": file_path,
+        }
+        out_files.append(result)
+    result = {
+        "status": "ok",
+        "files": out_files
+    }
+    return result
 
 
 def sync_file(bucket_name, file_path):
-    md5 = calculate_md5(str(file_path))
-    if not check_synced(file_path, md5):
-        try:
-            s3.upload_file(
-                Filename=str(file_path),
-                Bucket=bucket_name,
-                Key=file_path.name
-            )
-            print(f"Uploaded {file_path} to S3 bucket '{bucket_name}'.")
-            file_format = file_path.suffix.replace('.', '')
-            file_dir = str(file_path.parent.resolve())
-            file_name = file_path.name
-            meta_file = str(file_path) + META_EXTENSION
-            with open(meta_file, 'w') as json_file:
-                obj = {
-                    'md5': md5,
-                    'file': file_name,
-                    'dir': file_dir,
-                    'bucket': bucket_name,
-                    'key': file_path.name,
-                    'format': file_format
-                }
-                to_json(obj, json_file)
-            print(f"Metadata file created for {file_path}.")
-        except ClientError as e:
-            print(f"Failed to upload {file_path}: {e}")
+    s3_key = file_key(file_path)
+    if is_synced(file_path, bucket_name, s3_key):
+        info(f"File {file_path} in sync with s3://{bucket_name}/{s3_key}")
+        return
+    try:
+        s3.upload_file(
+            Filename=str(file_path),
+            Bucket=bucket_name,
+            Key=s3_key)
+        info(f"File {file_path} uploaded to s3://{bucket_name}/{s3_key}")
+    except ClientError as e:
+        error(f"File {file_path} sync failed to s3://{bucket_name}/{s3_key}. Error: {e}")

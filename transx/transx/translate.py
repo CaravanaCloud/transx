@@ -1,37 +1,32 @@
-import os
 import click
-import boto3
-import json
-import logging
 import time
-
-from botocore.exceptions import ClientError
-from pathlib import Path
-
-from .config import Config
-
-from .utils import *
-from .logs import *
+from pprint import pformat
 from .files import *
+from .utils import *
+from . import cmd, terms
 
-
-s3 = boto3.client('s3')
 translate = boto3.client('translate')
 
-def start_translation_job(metadata, job_name):
-    """Starts a translation job for the specified file."""
-    file_name = str(metadata['file'])
-    file_dir = str(metadata['dir'])
-    media_format = metadata['format']
-    bucket_name = metadata.get('bucket', None)
-    key = metadata.get('key', None)
-    output_key =  f"{key}/translate/{job_name}/{key}"
-    subs = { 'Formats': ['vtt','srt'] }
-    if not (bucket_name and key):
-        error(f"Missing bucket name or key for {file_name}")
+
+def translate_key(file_path, job_name):
+    key = file_key(file_path)
+    return f"{key}/translate/{job_name}/"
+
+
+def start_transcription_job(file_path, bucket_name, job_name):
+    """Starts a transcription job for the specified file."""
+    file_name = file_path.name
+    file_dir = file_path.parent.name
+    media_format = file_path.suffix[1:] if file_path.suffix else None
+    output_key = translate_key(file_path, job_name)
+
+    if not (bucket_name and output_key):
+        error(f"Missing bucket[{bucket_name}] name or key[{output_key}] for {file_name}")
         return None
-    video_uri = f"s3://{bucket_name}/{key}"
-    media = {'MediaFileUri': video_uri}
+    subs = {'Formats': ['vtt', 'srt']}
+    media_key = file_key(file_path)
+    media_uri = s3_url(bucket_name, media_key)
+    media = {'MediaFileUri': media_uri}
     job_info = {
         'FileDir': file_dir,
         'FileName': file_name,
@@ -43,9 +38,10 @@ def start_translation_job(metadata, job_name):
         'IdentifyMultipleLanguages': True,
         'Subtitles': subs
     }
-    info(f"Starting translation job {job_info}")
+    pretty_job_info = pformat(job_info)
+    info(f"Starting transcription job.\n{pretty_job_info}")
     try:
-        translate.start_translation_job(
+        translate.start_transcription_job(
             TranscriptionJobName=job_name,
             Media=media,
             MediaFormat=media_format,
@@ -56,87 +52,94 @@ def start_translation_job(metadata, job_name):
         )
         return job_info
     except ClientError as e:
-        error(f"Failed to start translation job for {file_name}: {e}")
+        error(f"Failed to start transcription job for {file_name}: {e}")
         return None
 
-def check_job_status(job_name):
-    """Polls the translation job status until completion or failure."""
+
+def wait_job_done(file_path, job_name):
+    """Polls the transcription job status until completion or failure."""
     while True:
         try:
-            response = translate.get_translation_job(TranscriptionJobName=job_name)
-            status = response['TranscriptionJob']['TranscriptionJobStatus']
+            response = translate.get_transcription_job(TranscriptionJobName=job_name)
+            job = response['TranscriptionJob']
+            status = job['TranscriptionJobStatus']
             info(f"Current status of job {job_name}: {status}")
             if status in ['COMPLETED', 'FAILED']:
-                return status
+                job_pp = pformat(job, indent=2)
+                info(job_pp)
+                write_sibling(file_path, ".translate.txt", job_pp)
+                return job
             time.sleep(60)
         except ClientError as e:
             error(f"Error fetching job status for {job_name}: {e}")
-            raise
-
-def write_translation_metadata(meta, status):
-    """Writes the translation job status to a JSON metadata file."""
-    file_name = meta['file']
-    file_dir = meta['dir']
-    file_abs = os.path.join(file_dir, file_name + ".transx.json")
-    file_path = Path(file_abs)
-    info(f"Writing translation status to {file_path}")
-    # read json from file_path as metadata and update the translate_status
-    with open(file_path, "r") as f:
-        metadata = json.load(f)
-    metadata["translate_status"] = status
-    with open(file_path, "w") as f:
-        json.dump(metadata, f)
+            return None
 
 
-def get_object(bucket, prefix, file_name, output_file = None):
-    """Downloads the translation results from S3."""
-    file_key = prefix + "/" + file_name
-    s3_url = f"s3://{bucket}/{file_key}"
-    try:
-        response = s3.get_object(Bucket=bucket, Key=file_key)
-        if not output_file:
-            output_file = file_name
-        info(f"Downloading [{s3_url}] as [{output_file}]")
-        with open(output_file, 'wb') as f:
-            f.write(response['Body'].read())
-        info(f"Downloaded translation for {file_name} to {output_file}")
-    except ClientError as e:
-        error(f"Failed to download translation for {s3_url}: {e}")
+def fix_terms(file_name, job_info):
+    file_path = Path(file_name)
+    exists = file_path.exists()
+    if not exists:
+        return
+    # replace .translate.Xxx extension with .Xxx
+    lang_code = "en-US"
+    if job_info:
+        langs = job_info.get('LanguageCodes')
+        if langs and len(langs):
+            first = langs[0]
+            lang_code = first.get('LanguageCode')
+            return lang_code
+    out_path = file_path.with_name(file_path.name.replace(".translate.", f".{lang_code}."))
+    terms.fix_terms(file_path, lang_code, out_path)
 
-def download(job_info):
-    """Downloads the translation results from S3."""
+
+def download(file_path, bucket_name, job_info):
+    """Downloads the transcription results from S3."""
     job_name = job_info.get('TranscriptionJobName')
-    info(f"Downloading translations for {job_name}")
-    debug(f"Job info: {job_info}")
-    debug("==========================================")
-    file_name = job_info.get('FileName')
-    bucket = job_info['OutputBucketName']
-    prefix = file_name + "/translate/" + job_name
-    file_dir = job_info['FileDir']
-    translate_out = os.path.join(file_dir, file_name + ".translate.json")
-    vtt_file = file_name + ".vtt"
+    info(f"Downloading transcriptions for {job_name}")
+    file_name = file_path.name
+    file_dir = file_path.parent
+    bucket = bucket_name
+
+    output_prefix = translate_key(file_path, job_name)
+
+    transc_key = job_name
+    transc_file = file_name + ".translate.json"
+    transc_out = os.path.join(file_dir, transc_file)
+    get_object(bucket, output_prefix, transc_key, transc_out)
+    fix_terms(transc_out, job_info)
+
+    vtt_key = job_name + ".vtt"
+    vtt_file = file_name + ".translate.vtt"
     vtt_out = os.path.join(file_dir, vtt_file)
-    srt_file = file_name + ".srt"
+    get_object(bucket, output_prefix, vtt_key, vtt_out)
+    fix_terms(vtt_out, job_info)
+
+    srt_key = job_name + ".srt"
+    srt_file = file_name + ".translate.srt"
     srt_out = os.path.join(file_dir, srt_file)
-    get_object(bucket, prefix, file_name, translate_out)
-    get_object(bucket, prefix, vtt_file, vtt_out)
-    get_object(bucket, prefix, srt_file, srt_out)
+    get_object(bucket, output_prefix, srt_key, srt_out)
+    fix_terms(srt_out, job_info)
 
-@click.command()
+@cmd.cli.command('translate')
 @click.option('--directory', default=None, help='Directory to search in')
-def run(directory):
-    metas = find_metadata()
-    info(f"Found {len(metas)} files to translate.")
-    for meta in metas:
-        file_name = meta['file']
+@click.option('--bucket_name', default=None, help='Bucket name')
+def command(directory, bucket_name):
+    """Transcribes all audio files in the specified directory matching the glob pattern."""
+    medias = find_medias(directory)
+    bucket_name = Config.resolve(Config.S3_BUCKET_NAME, bucket_name)
+    info(f"Found {len(medias)} files to translate.")
+    for media in medias:
+        file_name = media.name
         job_name = f"translate_{file_name}_{minutestamp()}"
-        info(f"Starting translation job for {file_name}")
-        job_info = start_translation_job(meta, job_name)
+        info(f"Starting transcription job for {file_name}.")
+        job_info = start_transcription_job(media, bucket_name, job_name)
+        if not job_info:
+            error(f"Failed to start transcription job for {file_name}.")
+            continue
         info("Transcription job started.")
-        status = check_job_status(job_name)
-        write_translation_metadata(meta, status)
-        info(f"Completed translation job for {file_name} with status: {status}")
-        download(job_info)
-
-if __name__ == '__main__':
-    run()
+        done_job = wait_job_done(media, job_name)
+        status = "ERROR"
+        if done_job:
+            status = "DONE"
+            download(media, bucket_name, job_info)
+        info(f"Transcribe job completed. status[{status}] file[{file_name}].")
