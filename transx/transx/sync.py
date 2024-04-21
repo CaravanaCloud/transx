@@ -98,6 +98,11 @@ def is_subtitle(file_path):
     return file_path.suffix in ['.srt', '.vtt']
 
 
+def is_media(file_path):
+    result = file_path.suffix in ['.mp4', '.mp3']
+    return result
+
+
 def run(directory, bucket_name):
     """Sync files to S3, checking each file for changes and uploading only if necessary."""
     directory = resolve(Config.TRANSX_PATH, directory)
@@ -108,6 +113,7 @@ def run(directory, bucket_name):
     out_files = []
     out_dirs = set([])
     subtitle_prefixes = set([])
+    synced_medias = set([])
     for file_path in all_files:
         sync_file(bucket_name, directory, file_path)
         result = {
@@ -118,13 +124,17 @@ def run(directory, bucket_name):
         if is_sub:
             sub_prefix = str(file_path.parent.relative_to(directory))
             subtitle_prefixes.add(sub_prefix)
+        is_med = is_media(file_path)
+        if is_med:
+            synced_medias.add(file_path)
         out_dirs.add(file_path.parent)
         out_files.append(result)
     result = {
         "status": "ok",
         "files": out_files,
         "dirs": out_dirs,
-        "subtitle_prefixes": list(subtitle_prefixes)
+        "subtitle_prefixes": list(subtitle_prefixes),
+        "synced_medias": list(synced_medias)
     }
     return result
 

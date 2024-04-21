@@ -33,7 +33,8 @@ def start_transcribe_job(directory, file_path, bucket_name, job_name):
         'OutputBucketName': bucket_name,
         'OutputKey': output_key,
         'IdentifyMultipleLanguages': True,
-        'Subtitles': subs
+        'Subtitles': subs,
+        'Version': version()
     }
     pretty_job_info = pformat(job_info)
     info(f"Starting transcribe job.\n{pretty_job_info}")
@@ -53,7 +54,7 @@ def start_transcribe_job(directory, file_path, bucket_name, job_name):
         return None
 
 
-@retry(wait=wait_exponential(multiplier=1.5, min=30, max=2*60), stop=stop_after_delay(60*60))
+@retry(wait=wait_exponential(multiplier=2, min=30, max=2*60), stop=stop_after_delay(60*60))
 def wait_job_done(file_path, job_name):
     """Polls the transcribe job status until completion or failure."""
     try:
@@ -74,6 +75,7 @@ def wait_job_done(file_path, job_name):
 
 def fix_terms(file_name, job_info):
     file_path = Path(file_name)
+    file_dir = file_path.parent
     exists = file_path.exists()
     if not exists:
         error(f"File not found: {file_name}")
@@ -84,10 +86,11 @@ def fix_terms(file_name, job_info):
         if langs and len(langs):
             first = langs[0]
             lang_code = first.get('LanguageCode')
-            return lang_code
-    out_path = file_path.name.replace(".transcribe.", f".{lang_code}.")
-    info(f"* Fixing terms in [{file_name}] in [{lang_code}] to [{out_path}]")
+    out_path_name = file_path.name.replace(".transcribe.", f".{lang_code}.")
+    out_path = file_dir / out_path_name
     terms.fix_terms(file_path, lang_code, out_path)
+    info(f"* Fixed terms in [{file_name}] in [{lang_code}] to [{out_path}]")
+
 
 
 def download(file_path, bucket_name, job_info):
@@ -114,7 +117,11 @@ def download(file_path, bucket_name, job_info):
         info(f"* Downloading [{uri}] to [{dl_file_out}]")
         get_object(bucket_name, object_prefix, object_key, dl_file_out)
         info(f"* Fixing [{dl_file_out}]")
-        fix_terms(dl_file_out, job_info)
+        try:
+            fix_terms(dl_file_out, job_info)
+            info("* Fixed terms.")
+        except Exception as e:
+            error(f"Failed to fix terms in [{dl_file_out}]: {e}")
         info(f"Downloaded [{uri}] to [{dl_file_out}]")
 
 
@@ -130,13 +137,9 @@ def command(directory, bucket_name):
     if not sync_ok:
         error("Failed to sync files.")
         return
-    synced_medias = sync_res.get('files')
-    info(f"Found {len(synced_medias)} synced medias to transcribe.")
-    for media_data in synced_medias:
-        media = media_data.get("file")
-        if not media:
-            error("Missing media file.")
-            continue
+    synced_media_files = sync_res.get('synced_medias')
+    info(f"Found {len(synced_media_files)} synced medias to transcribe.")
+    for media in synced_media_files:
         file_name = media.name
         job_name = f"transcribe__{file_name}__{secondstamp()}"
         info(f"Starting transcribe job for {file_name}.")
@@ -150,4 +153,4 @@ def command(directory, bucket_name):
         if done_job:
             status = "DONE"
             download(media, bucket_name, done_job)
-        info(f"Transcribe job completed. status[{status}] file[{file_name}].")
+        info(f"Transcribe job completed. status[{status}] file[{file_name}] version[{version()}].")
