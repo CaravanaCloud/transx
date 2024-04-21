@@ -4,6 +4,7 @@ from pprint import pformat
 from .utils import *
 from . import cmd, terms, sync
 from .logs import *
+from tenacity import retry, wait_exponential, stop_after_attempt
 
 transcribe = boto3.client('transcribe')
 
@@ -20,7 +21,7 @@ def start_transcribe_job(directory, file_path, bucket_name, job_name):
         return None
     subs = {'Formats': ['vtt', 'srt']}
     media_key = file_key(directory, file_path)
-    media_uri = s3_url_abs(bucket_name,  media_key)
+    media_uri = s3_url_abs(bucket_name, media_key)
     media = {'MediaFileUri': media_uri}
     job_info = {
         'JobName': job_name,
@@ -52,29 +53,30 @@ def start_transcribe_job(directory, file_path, bucket_name, job_name):
         return None
 
 
+@retry(wait=wait_exponential(multiplier=2, min=30, max=60 * 60), stop=stop_after_attempt(30))
 def wait_job_done(file_path, job_name):
     """Polls the transcribe job status until completion or failure."""
-    while True:
-        try:
-            response = transcribe.get_transcription_job(TranscriptionJobName=job_name)
-            job = response['TranscriptionJob']
-            status = job['TranscriptionJobStatus']
-            info(f"Current status of job {job_name}: {status}")
-            if status in ['COMPLETED', 'FAILED']:
-                job_pp = pformat(job, indent=2)
-                info(job_pp)
-                write_sibling(file_path, ".transcribe.txt", job_pp)
-                return job
-            time.sleep(60)
-        except ClientError as e:
-            error(f"Error fetching job status for {job_name}: {e}")
-            return None
+    try:
+        response = transcribe.get_transcription_job(TranscriptionJobName=job_name)
+        job = response['TranscriptionJob']
+        status = job['TranscriptionJobStatus']
+        info(f"Current status of job {job_name}: {status}")
+        if status in ['COMPLETED', 'FAILED']:
+            job_pp = pformat(job, indent=2)
+            info(job_pp)
+            write_sibling(file_path, ".transcribe.txt", job_pp)
+            return job
+        raise Exception(f"Job {job_name} not done yet.")
+    except ClientError as e:
+        error(f"Error fetching job status for {job_name}: {e}")
+        return None
 
 
 def fix_terms(file_name, job_info):
     file_path = Path(file_name)
     exists = file_path.exists()
     if not exists:
+        error(f"File not found: {file_name}")
         return
     lang_code = "xx_YY"
     if job_info:
@@ -83,7 +85,8 @@ def fix_terms(file_name, job_info):
             first = langs[0]
             lang_code = first.get('LanguageCode')
             return lang_code
-    out_path = file_path.with_name(file_path.name.replace(".transcribe.", f".{lang_code}."))
+    out_path = file_path.name.replace(".transcribe.", f".{lang_code}.")
+    info(f"Fixing terms in [{file_name}] in [{lang_code}] to [{out_path}]")
     terms.fix_terms(file_path, lang_code, out_path)
 
 
@@ -103,7 +106,11 @@ def download(file_path, bucket_name, job_info):
         uri_split = uri.split("/")
         object_prefix = "/".join(uri_split[4:-1])
         object_key = uri_split[-1]
-        dl_file_out = subs_dir / object_key
+        object_stem = object_key.split(".")[0]
+        object_ext = object_key.split(".")[-1]
+        out_ext = ".transcribe." + object_ext
+        out_key = object_stem + out_ext
+        dl_file_out = subs_dir / out_key
         get_object(bucket_name, object_prefix, object_key, dl_file_out)
         fix_terms(dl_file_out, job_info)
         info(f"Downloaded [{uri}] to [{dl_file_out}]")

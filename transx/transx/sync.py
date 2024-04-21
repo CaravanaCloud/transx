@@ -1,6 +1,6 @@
 import boto3
 import hashlib
-from botocore.exceptions import ClientError
+from pprint import pformat
 from .utils import *
 from .ls import * 
 from .config import Config
@@ -15,12 +15,13 @@ DEFAULT_AWS_PART_SIZE = 8388608
 s3 = boto3.client('s3')
 
 
-def calc_etag(inputfile, partsize):
+def calc_etag(input_file, part_size):
     md5_digests = []
-    with open(inputfile, 'rb') as f:
-        for chunk in iter(lambda: f.read(partsize), b''):
+    with open(input_file, 'rb') as f:
+        for chunk in iter(lambda: f.read(part_size), b''):
             md5_digests.append(hashlib.md5(chunk).digest())
-    return hashlib.md5(b''.join(md5_digests)).hexdigest() + '-' + str(len(md5_digests))
+    result = hashlib.md5(b''.join(md5_digests)).hexdigest() + '-' + str(len(md5_digests))
+    return result
 
 
 def factor_of_1mb(filesize, num_parts):
@@ -29,8 +30,8 @@ def factor_of_1mb(filesize, num_parts):
     return int(x + 1048576 - y)
 
 
-def possible_partsizes(filesize, num_parts):
-    return lambda partsize: partsize < filesize and (float(filesize) / float(partsize)) <= num_parts
+def possible_part_sizes(filesize, num_parts):
+    return lambda part_size: part_size < filesize and (float(filesize) / float(part_size)) <= num_parts
 
 
 def is_synced(file_path, s3_bucket, s3_key):
@@ -55,11 +56,10 @@ def is_synced(file_path, s3_bucket, s3_key):
                     DEFAULT_S3CMD_PART_SIZE,
                     factor_of_1mb(filesize, num_parts)
                 ]
-                for part_size in filter(possible_partsizes(filesize, num_parts), default_part_sizes):
+                for part_size in filter(possible_part_sizes(filesize, num_parts), default_part_sizes):
                     local_etag = calc_etag(file_path, part_size)
                     if s3_etag == local_etag:
                         return True
-
         return False
     except ClientError as e:
         # Handle the case where the S3 object does not exist or an error occurs
@@ -90,7 +90,12 @@ def ensure_bucket_exists(bucket_name):
 @click.option('--directory', default=None, help='Directory to search in')
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
-    run(directory, bucket_name)
+    result = run(directory, bucket_name)
+    info(pformat(result))
+
+
+def is_subtitle(file_path):
+    return file_path.suffix in ['.srt', '.vtt']
 
 
 def run(directory, bucket_name):
@@ -102,18 +107,24 @@ def run(directory, bucket_name):
     all_files = files.find_all(directory)
     out_files = []
     out_dirs = set([])
+    subtitle_prefixes = set([])
     for file_path in all_files:
         sync_file(bucket_name, directory, file_path)
         result = {
             "file": file_path,
             "dir": file_path.parent
         }
+        is_sub = is_subtitle(file_path)
+        if is_sub:
+            sub_prefix = str(file_path.parent.relative_to(directory))
+            subtitle_prefixes.add(sub_prefix)
         out_dirs.add(file_path.parent)
         out_files.append(result)
     result = {
         "status": "ok",
         "files": out_files,
-        "dirs": out_dirs
+        "dirs": out_dirs,
+        "subtitle_prefixes": list(subtitle_prefixes)
     }
     return result
 

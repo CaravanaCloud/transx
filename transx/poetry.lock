@@ -96,6 +96,16 @@ files = [
 ]
 
 [[package]]
+name = "pyssml"
+version = "0.1.3"
+description = "Python library for building SSML for Amazon Alexa. Version 0.1.3 includes new tags and amazon whisper helper."
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyssml-0.1.3.tar.gz", hash = "sha256:f54703389ad35c1e1b876a183698bb54da110436e18cd9d7f76384e77c0d25f3"},
+]
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -138,6 +148,20 @@ files = [
 ]
 
 [[package]]
+name = "tenacity"
+version = "8.2.3"
+description = "Retry code until it succeeds"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tenacity-8.2.3-py3-none-any.whl", hash = "sha256:ce510e327a630c9e1beaf17d42e6ffacc88185044ad85cf74c0a8887c6a0f88c"},
+    {file = "tenacity-8.2.3.tar.gz", hash = "sha256:5398ef0d78e63f40007c1fb4c0bff96e1911394d2fa8d194f77619c05ff6cc8a"},
+]
+
+[package.extras]
+doc = ["reno", "sphinx", "tornado (>=4.5)"]
+
+[[package]]
 name = "urllib3"
 version = "2.2.1"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -157,4 +181,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "72727180c34e93b522c3a5bf7303a22eb3a34121253fceb2dcf1f53f4cce1933"
+content-hash = "787674d34b031e87363f5c98d5f9f08d16f64cd550406ad5200ad3dfc254b3a3"
