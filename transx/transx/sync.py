@@ -1,22 +1,24 @@
-import click
 import boto3
-import json
-import logging
-from hashlib import md5
+import hashlib
 from botocore.exceptions import ClientError
+from .utils import *
 from .ls import * 
 from .config import Config
 from .logs import *
+from . import cmd
+import json
 
 s3 = boto3.client('s3')
 
+
 def calculate_md5(file_path):
     """Calculate MD5 hash of the file for integrity checking."""
-    hash_md5 = md5()
+    hash_md5 = hashlib.md5()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 
 def check_synced(file_path, md5):
     """Check if the file is already synced with S3 by comparing stored md5."""
@@ -31,6 +33,7 @@ def check_synced(file_path, md5):
     except (FileNotFoundError, KeyError, json.JSONDecodeError):
         print(f"No sync record for {file_path}. Uploading...")
     return False
+
 
 def ensure_bucket_exists(bucket_name):
     """Ensure the S3 bucket exists, and create it if it does not."""
@@ -50,52 +53,46 @@ def ensure_bucket_exists(bucket_name):
             print(f"Failed to access bucket '{bucket_name}': {e}")
             raise e
 
-@click.command()
+
+@cmd.cli.command('sync')
 @click.option('--directory', default=None, help='Directory to search in')
 @click.option('--glob_pattern', default=None, help='Glob pattern to filter files by')
 @click.option('--bucket_name', default=None, help='Bucket name')
-def sync(directory, glob_pattern, bucket_name):
+def command(directory, glob_pattern, bucket_name):
     """Sync files to S3, checking each file for changes and uploading only if necessary."""
     directory = Config.resolve(Config.TRANSX_PATH, directory)
     glob_pattern = Config.resolve(Config.TRANSX_GLOB, glob_pattern)
-    bucket_name = Config.resolve(Config.S3_BUCKET_NAME, None)
-
-    # Check if the bucket exists and create if not
+    bucket_name = Config.resolve(Config.S3_BUCKET_NAME, bucket_name)
     ensure_bucket_exists(bucket_name)
-
-    # Use the ls function to get files
-    files = get_files(directory, glob_pattern)  # Now calling ls() which returns the list of files
-
+    files = get_files(directory, glob_pattern)
     for file_path in files:
-        md5 = calculate_md5(str(file_path))
-        if not check_synced(file_path, md5):
-            try:
-                s3.upload_file(
-                    Filename=str(file_path),
-                    Bucket=bucket_name,
-                    Key=file_path.name
-                )
-                print(f"Uploaded {file_path} to S3 bucket '{bucket_name}'.")
-                format = file_path.suffix.replace('.', '')
-                dir = str(file_path.parent.resolve())
-                file_name = file_path.name
-                meta_file = str(file_path)+('.transx.json')
-                with open(meta_file, 'w') as json_file:
-                    obj = {
-                        'md5': md5,
-                        'file': file_name,
-                        'dir': dir,
-                        'bucket': bucket_name,
-                        'key': file_path.name,
-                        'format': format
-                    }
-                    json.dump(
-                        obj=obj, 
-                        fp=json_file,
-                        indent=2)
-                print(f"Metadata file created for {file_path}.")
-            except ClientError as e:
-                print(f"Failed to upload {file_path}: {e}")
+        sync_file(bucket_name, file_path)
 
-if __name__ == '__main__':
-    sync()
+
+def sync_file(bucket_name, file_path):
+    md5 = calculate_md5(str(file_path))
+    if not check_synced(file_path, md5):
+        try:
+            s3.upload_file(
+                Filename=str(file_path),
+                Bucket=bucket_name,
+                Key=file_path.name
+            )
+            print(f"Uploaded {file_path} to S3 bucket '{bucket_name}'.")
+            file_format = file_path.suffix.replace('.', '')
+            file_dir = str(file_path.parent.resolve())
+            file_name = file_path.name
+            meta_file = str(file_path) + META_EXTENSION
+            with open(meta_file, 'w') as json_file:
+                obj = {
+                    'md5': md5,
+                    'file': file_name,
+                    'dir': file_dir,
+                    'bucket': bucket_name,
+                    'key': file_path.name,
+                    'format': file_format
+                }
+                to_json(obj, json_file)
+            print(f"Metadata file created for {file_path}.")
+        except ClientError as e:
+            print(f"Failed to upload {file_path}: {e}")

@@ -1,22 +1,16 @@
-import os
 import click
 import boto3
-import json
-import logging
 import time
 
 from botocore.exceptions import ClientError
-from pathlib import Path
-
-from .config import Config
-
 from .utils import *
 from .logs import *
 from .files import *
-
+from . import cmd
 
 s3 = boto3.client('s3')
 transcribe = boto3.client('transcribe')
+
 
 def start_transcription_job(metadata, job_name):
     """Starts a transcription job for the specified file."""
@@ -59,6 +53,7 @@ def start_transcription_job(metadata, job_name):
         error(f"Failed to start transcription job for {file_name}: {e}")
         return None
 
+
 def check_job_status(job_name):
     """Polls the transcription job status until completion or failure."""
     while True:
@@ -72,6 +67,7 @@ def check_job_status(job_name):
         except ClientError as e:
             error(f"Error fetching job status for {job_name}: {e}")
             raise
+
 
 def write_transcription_metadata(meta, status):
     """Writes the transcription job status to a JSON metadata file."""
@@ -103,6 +99,7 @@ def get_object(bucket, prefix, file_name, output_file = None):
     except ClientError as e:
         error(f"Failed to download transcription for {s3_url}: {e}")
 
+
 def download(job_info):
     """Downloads the transcription results from S3."""
     job_name = job_info.get('TranscriptionJobName')
@@ -122,15 +119,16 @@ def download(job_info):
     get_object(bucket, prefix, vtt_file, vtt_out)
     get_object(bucket, prefix, srt_file, srt_out)
 
-@click.command()
+
+@cmd.cli.command('transcribe')
 @click.option('--directory', default=None, help='Directory to search in')
-def run(directory):
+def command(directory):
     """Transcribes all audio files in the specified directory matching the glob pattern."""
-    metas = find_metadata()
+    metas = find_metadata(directory)
     info(f"Found {len(metas)} files to transcribe.")
     for meta in metas:
         file_name = meta['file']
-        job_name = f"transcribe_{file_name}_{minstamp()}"
+        job_name = f"transcribe_{file_name}_{minutestamp()}"
         info(f"Starting transcription job for {file_name}")
         job_info = start_transcription_job(meta, job_name)
         info("Transcription job started.")
@@ -138,6 +136,3 @@ def run(directory):
         write_transcription_metadata(meta, status)
         info(f"Completed transcription job for {file_name} with status: {status}")
         download(job_info)
-
-if __name__ == '__main__':
-    run()

@@ -18,8 +18,3 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 transx = "transx.main:main"
-version = "transx.version:print_version"
-list = "transx.ls:ls"
-sync = "transx.sync:sync"
-clean = "transx.clean:clean"
-transcribe = "transx.transcribe:run"

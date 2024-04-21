@@ -1,14 +1,18 @@
-import click
-from .about import version
+from .cmd import cli
+from . import about
+from . import sync
 
-@click.group()
-@click.option('--debug/--no-debug', default=False)
-def cli(debug):
-    click.echo(f"Debug mode is {'on' if debug else 'off'}")
+_commands = [
+    about.command,
+    sync.command
+]
 
-@cli.command()
+
 def main():
-    click.echo(version())
+    for command in _commands:
+        cli.add_command(command)
+    cli(obj={})
+
 
 if __name__ == "__main__":
     main()
