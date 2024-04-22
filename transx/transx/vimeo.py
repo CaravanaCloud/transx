@@ -40,7 +40,6 @@ def get_folder(data_folder_name):
         return None
 
 
-
 def vimeo_upload(file_path):
     try:
         #
@@ -66,7 +65,7 @@ def vimeo_upload(file_path):
         return f"An error occurred: {e}"
 
 
-def is_synced(file_path):
+def is_synced(file_path, project_id):
     if not os.path.isfile(file_path):
         print(f"The file does not exist: {file_path}")
         return False
@@ -74,13 +73,13 @@ def is_synced(file_path):
     # check if there is a video with same name
     v = vimeo_client()
     user_id = resolve(Config.VIMEO_USER_ID)
-    request_url = f'/users/{user_id}/videos'
+    request_url = f'/users/{user_id}/projects/{project_id}/items'
     response = v.get(request_url)
     if response.status_code == 200:
         videos = response.json().get('data')
         for video in videos:
             if video.get('name') == video_name:
-                video_uri= video.get('uri')
+                video_uri = video.get('uri')
                 info(f"Video {video_name} found with uri[{video_uri}].")
                 return True
         return False
@@ -121,45 +120,46 @@ def create_folder(data_folder_name, parent_folder_uri=None):
         body['parent_folder_uri'] = parent_folder_uri
     response = v.post(request_url, data=body)
     if response.status_code == 201:
+        folder_uri = response.json().get('uri')
         info("Folder created:", response.json())
-        return True
+        return folder_uri
     else:
-        info("Failed to create data_folder:", response.json())
-        return False
+        info("Failed to create folder:", response.json())
+        return None
 
 
 def vimeo_sync(video):
-    is_sync = is_synced(video)
-    if not is_sync:
-        info("Video not synced.")
-        user_folder_name = user_name()
-        info(f"Checking vimeo user folder [{user_folder_name}]")
+    info("Video not synced.")
+    user_folder_name = user_name()
+    info(f"Checking vimeo user folder [{user_folder_name}]")
+    user_folder = get_folder(user_folder_name)
+    user_folder_uri = user_folder.get("uri") if user_folder else None
+    if not user_folder:
+        info(f"Creating vimeo user folder [{user_folder_name}]")
+        user_folder_uri = create_folder(user_folder_name)
         user_folder = get_folder(user_folder_name)
-        user_folder_uri = user_folder.get("uri") if user_folder else None
-        if not user_folder:
-            info(f"Creating vimeo user folder [{user_folder_name}]")
-            user_folder_uri = create_folder(user_folder_name)
-            user_folder = get_folder(user_folder_name)
-            info(f"Folder [{user_folder.get("name")}] created.")
+        info(f"Folder [{user_folder.get("name")}] created.")
 
-        data_folder_name = video.parent.name
-        info(f"Checking vimeo data folder [{data_folder_name}] in user [{user_folder_uri}]")
+    data_folder_name = video.parent.name
+    info(f"Checking vimeo data folder [{data_folder_name}] in user [{user_folder_uri}]")
+    data_folder = get_folder(data_folder_name)
+    data_folder_uri = user_folder.get("uri") if user_folder else None
+    if not data_folder:
+        info(f"Creating vimeo data_folder [{data_folder_name}]")
+        data_folder_uri = create_folder(data_folder_name, user_folder_uri)
         data_folder = get_folder(data_folder_name)
-        if not data_folder:
-            info(f"Creating vimeo data_folder [{data_folder_name}]")
-            data_folder_url = create_folder(data_folder_name, user_folder_uri)
-            data_folder = get_folder(data_folder_name)
-            info(f"Folder [{data_folder_url}] created.")
+        info(f"Folder [{data_folder_uri}] created.")
 
+    is_sync = is_synced(video, data_folder_uri)
+    if not is_sync:
         info(f"Uploading {str(video)}")
         vimeo_url = vimeo_upload(video)
         info(f"Moving url[{vimeo_url}] to data_folder[{data_folder_name}]")
         vimeo_move(vimeo_url, data_folder)
         info(f"TODO: Sync subs")
-        info(f"Video {str(video)} syncing done.")
-    info("Video synced.")
-    return video
 
+    info(f"Video {str(video)} syncing done.")
+    return {}
 
 def run(directory):
     videos = find_videos(directory)
@@ -175,4 +175,3 @@ def run(directory):
 def command(directory):
     result = run(directory)
     info(pformat(result))
-

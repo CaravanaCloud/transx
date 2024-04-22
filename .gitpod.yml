@@ -21,3 +21,7 @@ vscode:
     - vscjava.vscode-java-debug
     - vscjava.vscode-java-test
     - enkia.tokyo-night
+
+additionalRepositories:
+  - url: https://github.com/CaravanaCloud/transx-secrets
+    checkoutLocation: transx-secrets
