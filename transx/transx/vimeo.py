@@ -65,6 +65,7 @@ def vimeo_upload(file_path):
         return f"An error occurred: {e}"
 
 
+# TODO: Submitting dubplicate videos, check if already exists
 def is_synced(file_path, project_id):
     if not os.path.isfile(file_path):
         print(f"The file does not exist: {file_path}")

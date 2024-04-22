@@ -31,7 +31,9 @@ def init():
     info("Configuration initialized.")
 
 
+#TODO: Document which settings are required
 class Config(Enum):
+
     TRANSX_PATH = auto()
     TRANSX_BUCKET_NAME = auto()
     TRANSX_ROLE_NAME = auto()
