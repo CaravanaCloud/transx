@@ -37,6 +37,11 @@ class Config(Enum):
     TRANSX_ROLE_NAME = auto()
     TRANSX_SOURCE_LANG = auto()
     TRANSX_TARGET_LANG = auto()
+    VIMEO_CLIENT_ID = auto()
+    VIMEO_ACCESS_TOKEN = auto()
+    VIMEO_CLIENT_SECRET = auto()
+    VIMEO_AUTH_URL = auto()
+    VIMEO_TOKEN_URL = auto()
 
 
 @cmd.cli.command("config")

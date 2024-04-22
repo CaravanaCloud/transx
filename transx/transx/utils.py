@@ -102,13 +102,6 @@ def get_object(bucket, prefix, file_name, output_file=None):
         error(f"Download failed for [{object_url}]: {e}")
 
 
-def write_sibling(file_path, sibling_ext, sibling_data):
-    sibling_path = file_path.with_suffix(sibling_ext)
-    with open(sibling_path, "w") as f:
-        to_json(sibling_data, f)
-    return sibling_path
-
-
 def role_exists(role_name):
     if not role_name:
         return False
@@ -180,7 +173,9 @@ _defaults = {
         Config.TRANSX_BUCKET_NAME: f'transx.s3.{datestamp()}',
         Config.TRANSX_SOURCE_LANG:  'en',
         Config.TRANSX_TARGET_LANG: 'pt,es,ca',
-        Config.TRANSX_ROLE_NAME: 'transx-role'
+        Config.TRANSX_ROLE_NAME: 'transx-role',
+        Config.VIMEO_AUTH_URL: 'https: //api.vimeo.com/oauth/authorize',
+        Config.VIMEO_TOKEN_URL: 'https: //api.vimeo.com/oauth/access_token',
 }
 
 settings_cache = {}
@@ -206,6 +201,11 @@ def _resolve(setting, command_line_value=None):
         setting_value = settings.get(setting)
         info(f"Setting {setting.name} [dynaconf]= {setting_value}")
         return setting_value
+    env = os.environ
+    if setting.name in env:
+        env_value = env.get(setting.name)
+        info(f"Setting {setting.name} [env]= {env_value}")
+        return env_value
     default_val = _defaults.get(setting)
     info(f"Setting {setting.name} [default]= {default_val}")
     return default_val

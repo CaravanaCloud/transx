@@ -5,6 +5,7 @@ from . import cmd, sync
 from tenacity import retry, wait_exponential, stop_after_delay
 from datetime import datetime
 import time
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 translate = boto3.client('translate')
 
@@ -24,7 +25,8 @@ def start_translate_job(translate_prefix, bucket_name, job_name):
     info(f"Starting translate job.\n{pretty_job_info}")
     input_key = s3_key("user", translate_prefix)
     input_uri = s3_url_abs(bucket_name, input_key)
-    output_uri = s3_url_abs(bucket_name, "translate", job_name)
+    output_key = s3_key("translate", job_name)
+    output_uri = s3_url_abs(bucket_name, output_key)
     role_arn = check_role()
     src_lang = resolve(Config.TRANSX_SOURCE_LANG)
     tgt_lang_str = resolve(Config.TRANSX_TARGET_LANG)
@@ -84,9 +86,58 @@ def wait_job_done(subtitle_prefix, job_info):
         return None
 
 
-def download(file_path, bucket_name, job_info):
+def s3_download_all(directory, output_s3_url):
+    if output_s3_url.startswith("s3://"):
+        output_s3_url = output_s3_url[5:]
+    bucket_name, prefix = output_s3_url.split('/', 1) if '/' in output_s3_url else (output_s3_url, '')
+
+    # Ensure the prefix ends with '/' if it's not empty
+    if prefix and not prefix.endswith('/'):
+        prefix += '/'
+
+    # Create the directory if it does not exist
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # List objects within the S3 bucket
+    paginator = s3.get_paginator('list_objects_v2')
+
+    try:
+        for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+            for obj in page.get('Contents', []):
+                # Construct the path to save the file
+                file_path = os.path.join(directory, obj['Key'][len(prefix):])
+                file_dir = os.path.dirname(file_path)
+
+                # Create directory structure if it does not exist
+                if not os.path.exists(file_dir):
+                    os.makedirs(file_dir)
+
+                # Download the file
+                s3.download_file(bucket_name, obj['Key'], file_path)
+                print(f"Downloaded {obj['Key']} to {file_path}")
+    except NoCredentialsError:
+        print("Error: No AWS credentials were found.")
+    except PartialCredentialsError:
+        print("Error: Incomplete AWS credentials.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+def download(directory, job_info):
     """Downloads the translate results from S3."""
     info(f"Downloading translate results. {job_info} ")
+    return
+    output_s3_url = job_info.get('OutputUri')
+    directory_path = Path(directory)
+    output_dir = directory_path / "subtitles"
+    s3_download_all(output_dir, output_s3_url)
+    info(f"Downloaded translate results to {output_dir}.")
+
+
+def write_translate_job(subtitle_prefix, done_job):
+    info(f"Writing done translate job info for {subtitle_prefix}\n{str(done_job)}")
+
 
 
 @cmd.cli.command('translate')
@@ -120,5 +171,6 @@ def command(directory, bucket_name):
         status = "ERROR"
         if done_job:
             status = "DONE"
-            download(subtitle_prefix, bucket_name, job_info)
+            write_translate_job(subtitle_prefix, done_job)
+            download(subtitle_prefix, done_job)
         info(f"Transcribe job completed. status[{status}] dir[{subtitle_prefix}].")

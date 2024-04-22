@@ -1,5 +1,4 @@
 import click
-import time
 from pprint import pformat
 from .utils import *
 from . import cmd, terms, sync
@@ -54,8 +53,8 @@ def start_transcribe_job(directory, file_path, bucket_name, job_name):
         return None
 
 
-@retry(wait=wait_exponential(multiplier=2, min=30, max=2*60), stop=stop_after_delay(60*60))
-def wait_job_done(file_path, job_name):
+@retry(wait=wait_exponential(multiplier=4, min=30, max=2*60), stop=stop_after_delay(60*60))
+def wait_job_done(file_name, job_name):
     """Polls the transcribe job status until completion or failure."""
     try:
         response = transcribe.get_transcription_job(TranscriptionJobName=job_name)
@@ -63,9 +62,25 @@ def wait_job_done(file_path, job_name):
         status = job['TranscriptionJobStatus']
         info(f"Current status of job {job_name}: {status}")
         if status in ['COMPLETED', 'FAILED']:
-            job_pp = pformat(job, indent=2)
-            info(job_pp)
-            write_sibling(file_path, ".transcribe.txt", job_pp)
+            lang_codes = job.get('LanguageCodes')
+            job_json = json.dumps({
+                "TranscriptionJobName": job.get("TranscriptionJobName"),
+                "LanguageCodes": lang_codes
+            }, indent=2);
+            info(job_json)
+            info("=====")
+            file_path = Path(file_name)
+            file_dir = file_path.parent
+            subs_dir = file_dir / "subs"
+            out_name = file_path.with_suffix(".transcribe.json")
+            # use subs dir
+            out_file = subs_dir / out_name.name
+            if not subs_dir.exists():
+                subs_dir.mkdir()
+            info(f"Writing done job info to file[{out_file}] ")
+            with open(out_file, "w") as f:
+                f.write(job_json)
+            info(pformat(job))
             return job
         raise Exception(f"Job {job_name} not done yet.")
     except ClientError as e:
@@ -90,7 +105,6 @@ def fix_terms(file_name, job_info):
     out_path = file_dir / out_path_name
     terms.fix_terms(file_path, lang_code, out_path)
     info(f"* Fixed terms in [{file_name}] in [{lang_code}] to [{out_path}]")
-
 
 
 def download(file_path, bucket_name, job_info):

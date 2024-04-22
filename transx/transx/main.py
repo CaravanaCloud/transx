@@ -1,5 +1,10 @@
 from .cmd import cli
-from . import about, sync, transcribe, translate, config
+# fundamentals
+from . import about, sync, config, clean
+# features
+from . import transcribe, translate
+# developer preview
+from . import ssml, vimeo
 
 _commands = [
     about.command,
@@ -7,6 +12,10 @@ _commands = [
     sync.command,
     transcribe.command,
     translate.command,
+    clean.command,
+    ssml.command,
+    vimeo.command
+
 ]
 
 
