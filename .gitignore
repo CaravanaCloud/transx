@@ -1,3 +1,5 @@
+.envrc
+
 .class
 target
 test/*.storage
