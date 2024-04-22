@@ -115,20 +115,21 @@ def s3_download_all(directory, output_s3_url):
 
                 # Download the file
                 s3.download_file(bucket_name, obj['Key'], file_path)
-                print(f"Downloaded {obj['Key']} to {file_path}")
+                info(f"Downloaded {obj['Key']} to {file_path}")
+
     except NoCredentialsError:
-        print("Error: No AWS credentials were found.")
+        info("Error: No AWS credentials were found.")
     except PartialCredentialsError:
-        print("Error: Incomplete AWS credentials.")
+        info("Error: Incomplete AWS credentials.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        info(f"An error occurred: {e}")
 
 
 def download(directory, job_info):
     """Downloads the translate results from S3."""
-    info(f"Downloading translate results. {job_info} ")
-    return
-    output_s3_url = job_info.get('OutputUri')
+    info(f"Downloading translate results.\n {job_info} ")
+    output_config = job_info.get("OutputDataConfig")
+    output_s3_url = output_config.get('S3Uri')
     directory_path = Path(directory)
     output_dir = directory_path / "subtitles"
     s3_download_all(output_dir, output_s3_url)
@@ -137,7 +138,6 @@ def download(directory, job_info):
 
 def write_translate_job(subtitle_prefix, done_job):
     info(f"Writing done translate job info for {subtitle_prefix}\n{str(done_job)}")
-
 
 
 @cmd.cli.command('translate')

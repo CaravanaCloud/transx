@@ -40,6 +40,7 @@ class Config(Enum):
     VIMEO_CLIENT_ID = auto()
     VIMEO_ACCESS_TOKEN = auto()
     VIMEO_CLIENT_SECRET = auto()
+    VIMEO_USER_ID = auto()
     VIMEO_AUTH_URL = auto()
     VIMEO_TOKEN_URL = auto()
 

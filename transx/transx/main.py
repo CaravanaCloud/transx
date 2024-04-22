@@ -15,7 +15,6 @@ _commands = [
     clean.command,
     ssml.command,
     vimeo.command
-
 ]
 
 
