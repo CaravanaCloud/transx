@@ -131,7 +131,8 @@ def download(directory, job_info):
     output_config = job_info.get("OutputDataConfig")
     output_s3_url = output_config.get('S3Uri')
     directory_path = Path(directory)
-    output_dir = directory_path / "subtitles"
+    parent_path = directory_path.parent
+    output_dir = parent_path / "subtitles"
     s3_download_all(output_dir, output_s3_url)
     info(f"Downloaded translate results to {output_dir}.")
 
