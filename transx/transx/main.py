@@ -1,6 +1,6 @@
 from .cmd import cli
 # fundamentals
-from . import about, sync, config, clean
+from . import about, sync, config, clean, logscmd
 # features
 from . import transcribe, translate
 # developer preview
@@ -14,7 +14,8 @@ _commands = [
     translate.command,
     clean.command,
     ssml.command,
-    vimeo.command
+    vimeo.command,
+    logscmd.command
 ]
 
 

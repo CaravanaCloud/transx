@@ -26,9 +26,7 @@ def get_setting(name):
 
 
 def init():
-    info("Initializing configuration.")
-    info(str(settings))
-    info("Configuration initialized.")
+    debug("Initializing configuration.")
 
 
 #TODO: Document which settings are required
@@ -39,6 +37,7 @@ class Config(Enum):
     TRANSX_ROLE_NAME = auto()
     TRANSX_SOURCE_LANG = auto()
     TRANSX_TARGET_LANG = auto()
+
     VIMEO_CLIENT_ID = auto()
     VIMEO_ACCESS_TOKEN = auto()
     VIMEO_CLIENT_SECRET = auto()
@@ -50,9 +49,7 @@ class Config(Enum):
 @cmd.cli.command("config")
 def command():
     """Prints the current configuration."""
-    for key in settings.keys():
+    keys = sorted(settings)
+    for key in keys:
         value = settings.get(key)
         info(f"{key}: {value}")
-    terms = Config.terms(None)
-    terms_count = len(terms) if terms else 0
-    info(f"[{terms_count}] terms loaded.")
