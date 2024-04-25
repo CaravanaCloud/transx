@@ -20,7 +20,6 @@ _commands = [
 
 
 def main():
-    config.init()
     for command in _commands:
         cli.add_command(command)
     cli(obj={})

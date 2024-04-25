@@ -168,15 +168,7 @@ def check_role():
         return role_name
     return None
 
-_defaults = {
-        Config.TRANSX_PATH:  os.getcwd(),
-        Config.TRANSX_BUCKET_NAME: f'transx.s3.{datestamp()}',
-        Config.TRANSX_SOURCE_LANG:  'en',
-        Config.TRANSX_TARGET_LANG: 'pt,es,ca',
-        Config.TRANSX_ROLE_NAME: 'transx-role',
-        Config.VIMEO_AUTH_URL: 'https: //api.vimeo.com/oauth/authorize',
-        Config.VIMEO_TOKEN_URL: 'https: //api.vimeo.com/oauth/access_token',
-}
+
 
 settings_cache = {}
 

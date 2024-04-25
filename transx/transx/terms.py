@@ -1,22 +1,9 @@
 from .logs import *
-
-_default_terms = {
-    "VING": "Vaadin",
-    "crudes": "'CRUDs'",
-    "Barland": "Borland",
-    "Querkus": "Quarkus",
-    "Quercus": "Quarkus",
-    "Quus": "Quarkus"
-}
-
-
-def default_terms():
-    return _default_terms
-
+from .config import *
 
 def fix_terms(file_path, lang_code, out_path):
-    the_terms = default_terms()
-    # cfg_terms = {} # TODO: load terms from config / dynaconf
+    the_terms = Config.terms(lang_code)
+
     with open(file_path, "r") as fp:
         text = fp.read()
         for term, replacement in the_terms.items():
