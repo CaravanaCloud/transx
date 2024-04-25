@@ -11,9 +11,9 @@ vimeo_cli = None
 def vimeo_client():
     if vimeo_cli:
         return vimeo_cli
-    _client_id = resolve(Config.VIMEO_CLIENT_ID)
-    _access_token = resolve(Config.VIMEO_ACCESS_TOKEN)
-    _client_secret = resolve(Config.VIMEO_CLIENT_SECRET)
+    _client_id = Config.VIMEO_CLIENT_ID.resolve()
+    _access_token = Config.VIMEO_ACCESS_TOKEN.resolve()
+    _client_secret = Config.VIMEO_CLIENT_SECRET.resolve()
     _vimeo = vimeo.VimeoClient(
         token=_access_token,
         key=_client_id,
@@ -22,10 +22,19 @@ def vimeo_client():
     return _vimeo
 
 
+def vimeo_user_id():
+    user_id = Config.VIMEO_USER_ID.resolve()
+    if not user_id:
+        warning("Vimeo User ID not found.")
+        return None
+    return user_id
+
+
 def get_folder(data_folder_name):
     v = vimeo_client()
-    user_id = resolve(Config.VIMEO_USER_ID)
+    user_id = vimeo_user_id()
     request_url = f'/users/{user_id}/projects'
+    info(f"Get folder [{user_id}]/{data_folder_name}")
     response = v.get(request_url)
     if response.status_code == 200:
         projects = response.json().get('data')
@@ -97,7 +106,7 @@ def is_synced(file_path, project_url):
 
 def vimeo_move(vimeo_url, data_folder):
     v = vimeo_client()
-    user_id = resolve(Config.VIMEO_USER_ID)
+    user_id = Config.VIMEO_USER_ID.resolve()
     if not data_folder:
         info("No data_folder provided.")
         return False
@@ -118,7 +127,7 @@ def vimeo_move(vimeo_url, data_folder):
 def create_folder(data_folder_name, parent_folder_uri=None):
     v = vimeo_client()
 
-    user_id = resolve(Config.VIMEO_USER_ID)
+    user_id = Config.VIMEO_USER_ID.resolve()
     request_url = f'/users/{user_id}/projects'
     body = {
         'name': data_folder_name
@@ -134,6 +143,7 @@ def create_folder(data_folder_name, parent_folder_uri=None):
         info("Failed to create folder:", response.json())
         return None
 
+
 def is_sub_file(file_path, sub_file):
     video_name = file_path.name
     sub_name = sub_file.name
@@ -146,6 +156,7 @@ def is_sub_file(file_path, sub_file):
     matches = video_name_base in sub_name_base
     info(f"Checking if [{video_name_base}]x[{sub_name_base}] => {matches}")
     return matches
+
 
 def find_subs(file_path):
     subtitles_dir = file_path.parent / "subtitles"
@@ -163,7 +174,7 @@ def find_subs(file_path):
     return subs
 
 
-def vimeo_upload_sub(vimeo_url, sub):
+def vimeo_upload_sub(vimeo_url, sub, data_folder_uri):
     try:
         #
         # Upload the video
@@ -171,7 +182,8 @@ def vimeo_upload_sub(vimeo_url, sub):
         sub_name = sub.name
         body = {
             'name': sub_name,
-            'description': sub_name
+            'description': sub_name,
+            'folder_uri': data_folder_uri
         }
         sub_uri = vimeo_client().upload(sub, data=body)
         if sub_uri:
@@ -197,19 +209,19 @@ def vimeo_assoc_sub(vimeo_url, sub_uri, lang_code):
     data = {
         'type': 'subtitles',
         'language': lang_code,
-        'name': lang_code+' subtitles',
-        'file_url': sub_uri,
-        'active': True
+        'name': lang_code,
     }
 
     # Construct the endpoint URL for adding the text track
     api_endpoint = f'/videos/{video_id}/texttracks'
 
     # Send a POST request to add the subtitle track
-    response = v.post(api_endpoint, data=data, field='texttrack')
+    response = v.post(api_endpoint, data=data)
 
     # Check the response
-    if response.status() == 201:
+    if response:
+        response_str = str(response)
+        print(response_str)
         print("Subtitle successfully associated with the video.")
         return response.json()
     else:
@@ -217,14 +229,14 @@ def vimeo_assoc_sub(vimeo_url, sub_uri, lang_code):
         return None
 
 
-def vimeo_upload_subs(video, vimeo_url):
+def vimeo_upload_subs(video, vimeo_url, data_folder_uri):
     subs = find_subs(video)
     info(f"Uploading [{len(subs)}] subs for [{video.name}]")
     for sub in subs:
         sub_name = sub.name
         lang_code = sub_name.split(".")[0]
         info(f"Uploading subtitle [{lang_code}] {sub_name}")
-        sub_uri = vimeo_upload_sub(vimeo_url, sub)
+        sub_uri = vimeo_upload_sub(vimeo_url, sub, data_folder_uri)
         if sub_uri:
             info(f"Subtitle {sub_name} uploaded tp {sub_uri}.")
             vimeo_assoc_sub(vimeo_url, sub_uri, lang_code)
@@ -236,21 +248,22 @@ def vimeo_upload_subs(video, vimeo_url):
 def vimeo_sync(video):
     # load user folder
     user_folder_name = user_name()
-    info(f"Checking vimeo user folder [{user_folder_name}]")
+    debug(f"Checking vimeo user folder [{user_folder_name}]")
     user_folder = get_folder(user_folder_name)
     user_folder_uri = user_folder.get("uri") if user_folder else None
     if not user_folder:
-        info(f"Creating vimeo user folder [{user_folder_name}]")
+        debug(f"Creating vimeo user folder [{user_folder_name}]")
         user_folder_uri = create_folder(user_folder_name)
         user_folder = get_folder(user_folder_name)
-        info(f"Folder [{user_folder.get("name")}] created.")
+        info(f"Folder [{user_folder.get("name") if user_folder else "USER_FOLDER_FAILED"}] created.")
+
     # load data folder
     data_folder_name = video.parent.name
-    info(f"Checking vimeo data folder [{data_folder_name}] in user [{user_folder_uri}]")
+    debug(f"Checking vimeo data folder [{data_folder_name}] in user [{user_folder_uri}]")
     data_folder = get_folder(data_folder_name)
     data_folder_uri = user_folder.get("uri") if user_folder else None
     if not data_folder:
-        info(f"Creating vimeo data_folder [{data_folder_name}]")
+        debug(f"Creating vimeo data_folder [{data_folder_name}]")
         data_folder_uri = create_folder(data_folder_name, user_folder_uri)
         data_folder = get_folder(data_folder_name)
         info(f"Folder [{data_folder_uri}] created.")
@@ -262,13 +275,17 @@ def vimeo_sync(video):
         # info(f"Moving url[{vimeo_url}] to data_folder[{data_folder_name}]")
         # vimeo_move(vimeo_url, data_folder)
     info(f"TODO: Sync subs")
-    vimeo_upload_subs(video, vimeo_url)
+    vimeo_upload_subs(video, vimeo_url, data_folder_uri)
 
     info(f"Video {str(video)} syncing done.")
     return {}
 
 
 def run(directory):
+    uid = vimeo_user_id()
+    if not uid:
+        error("Could not find vimeo user")
+        return None
     videos = find_videos(directory)
     for video in videos:
         info(f"Processing video {video}")

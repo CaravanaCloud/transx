@@ -31,26 +31,26 @@ _today_str = _now.strftime('%Y%m%d')
 
 class Config(Enum):
 
-    PATH = (lambda: os.getcwd())
-    BUCKET_NAME = (lambda: f'transx.s3.{_now_str}',)
-    ROLE_NAME = (lambda: f"transx.role",)
-    SOURCE_LANG = (lambda: f"en",)
-    TARGET_LANG = (lambda: f"pt,es,ca",)
-    TEST_DESCRIPTION = (lambda: f"default description",)
-    VIMEO_CLIENT_ID = (lambda: None,)
-    VIMEO_ACCESS_TOKEN = (lambda: None,)
-    VIMEO_CLIENT_SECRET = (lambda: None,)
-    VIMEO_USER_ID = (lambda: None,)
-    VIMEO_AUTH_URL = ('https: //api.vimeo.com/oauth/authorize',)
-    VIMEO_TOKEN_URL = ('https: //api.vimeo.com/oauth/access_token',)
+    MEDIA_PATH = os.getcwd()
+    BUCKET_NAME = f'transx.s3.{_today_str}'
+    ROLE_NAME = f"transx.role.{_today_str}"
+    SOURCE_LANG = "en"
+    TARGET_LANG = "pt,es,ca"
+    TEST_DESCRIPTION = "default description"
+    VIMEO_CLIENT_ID = auto()
+    VIMEO_ACCESS_TOKEN = auto()
+    VIMEO_CLIENT_SECRET = auto()
+    VIMEO_USER_ID = auto()
+    VIMEO_AUTH_URL = 'https://api.vimeo.com/oauth/authorize'
+    VIMEO_TOKEN_URL = 'https://api.vimeo.com/oauth/access_token'
 
-    def resolve(self):
+    def resolve(self, prompt_val=None):
+        if prompt_val:
+            return prompt_val
         val = settings.get(self.name)
         if not val:
-            default = self.value[0]
-            match default:
-                case str(): val = default
-                case func if callable(func): val = func()
+            default = self.value
+            val = default() if callable(default) else default
         return val
 
     @staticmethod
@@ -62,6 +62,7 @@ class Config(Enum):
         cfg_ts = cfg_tts.get(lang_code)
         result = static_ts | cfg_ts
         return result
+
 
 @cmd.cli.command("config")
 def command():

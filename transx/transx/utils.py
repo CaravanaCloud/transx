@@ -155,7 +155,7 @@ def get_role_arn(role_name):
 
 
 def check_role():
-    role_name = resolve(Config.TRANSX_ROLE_NAME, None)
+    role_name = Config.ROLE_NAME.resolve()
     exists = role_exists(role_name)
     if exists:
         info(f"Role {role_name} exists.")
@@ -167,37 +167,3 @@ def check_role():
         info(f"Role {role_name} created.")
         return role_name
     return None
-
-
-
-settings_cache = {}
-
-
-def resolve(setting, command_line_value=None):
-    if setting in settings_cache:
-        return settings_cache[setting]
-    result = _resolve(setting, command_line_value)
-    settings_cache[setting] = result
-    return result
-
-
-def _resolve(setting, command_line_value=None):
-    """
-    Resolve the value of a setting with the priority:
-    command-line option > dynaconf setting > static default.
-    """
-    if command_line_value is not None:
-        info(f"Setting {setting.name} [cli]= {command_line_value}")
-        return command_line_value
-    if settings.exists(setting):
-        setting_value = settings.get(setting)
-        info(f"Setting {setting.name} [dynaconf]= {setting_value}")
-        return setting_value
-    env = os.environ
-    if setting.name in env:
-        env_value = env.get(setting.name)
-        info(f"Setting {setting.name} [env]= {env_value}")
-        return env_value
-    default_val = _defaults.get(setting)
-    info(f"Setting {setting.name} [default]= {default_val}")
-    return default_val

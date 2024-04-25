@@ -1,0 +1,23 @@
+project:
+  name: transx
+  version: 0.1.0
+  description: Video tools for international creators
+  longDescription: Video tools for international creators including transcribe, translate and more
+  authors:
+    - faermanj
+  license: Apache-2.0
+  links:
+    homepage: https://caravana.cloud
+  java:
+    groupId: cloud.caravana
+    version: 21
+  inceptionYear: 2024
+
+release:
+  github:
+    owner: CaravanaCloud
+
+distributions:
+  transx-tar:
+    artifacts:
+      - path: transx/dist/transx-{{projectVersion}}.tar.gz
