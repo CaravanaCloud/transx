@@ -143,7 +143,7 @@ def download(file_path, bucket_name, job_info):
 @click.option('--directory', default=None, help='Directory to search in')
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
-    """Transcribes all audio files in the specified directory matching the glob pattern."""
+    """Transcribes media files."""
     bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
     directory = resolve(Config.TRANSX_PATH, directory)
     sync_res = sync.run(directory, bucket_name)

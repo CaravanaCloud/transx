@@ -145,7 +145,7 @@ def write_translate_job(subtitle_prefix, done_job):
 @click.option('--directory', default=None, help='Directory to search in')
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
-    """Transcribes all audio files in the specified directory matching the glob pattern."""
+    """Translates media files."""
     bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
     directory = resolve(Config.TRANSX_PATH, directory)
     sync_res = sync.run(directory, bucket_name)

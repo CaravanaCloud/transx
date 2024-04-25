@@ -49,6 +49,7 @@ def run(directory):
 @click.option('--directory', default=None, help='Directory to search in')
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
+    """Generates SSML files."""
     directory = resolve(Config.TRANSX_PATH, directory)
     result = run(directory)
     info(pformat(result))

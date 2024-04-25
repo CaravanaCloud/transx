@@ -69,7 +69,7 @@ def vimeo_upload(file_path, folder_uri):
 def is_synced(file_path, project_url):
     if not os.path.isfile(file_path):
         warning(f"The file does not exist: {file_path}")
-        return False
+        return None
     video_name = file_path.name
     info(f"Checking if video file [{video_name}] is synced in [{project_url}].")
     # check if there is a video with same name
@@ -77,16 +77,22 @@ def is_synced(file_path, project_url):
     request_url = f'{project_url}/items'
     response = v.get(request_url)
     if response.status_code == 200:
-        videos = response.json().get('data')
-        for video in videos:
-            if video.get('name') == video_name:
-                video_uri = video.get('uri')
-                info(f"Video {video_name} found with uri[{video_uri}].")
-                return True
-        return False
+        data = response.json().get('data')
+        videos = list(filter(lambda x: x.get('type') == 'video', data))
+        info(f"Found [{len(videos)}] in project [{project_url}].")
+        for v in videos:
+            video_el = v.get("video")
+            v_name = video_el.get('name')
+            matches = v_name == video_name
+            debug(f"Matching [{v_name}]x[{video_name}] => {matches}")
+            if matches:
+                video_uri = v.get("uri")
+                debug(f"Video {video_name} found with uri[{video_uri}].")
+                return video_uri
+        return None
     else:
         info("Failed to get videos:", response.json())
-    return False
+    return None
 
 
 def vimeo_move(vimeo_url, data_folder):
@@ -128,17 +134,32 @@ def create_folder(data_folder_name, parent_folder_uri=None):
         info("Failed to create folder:", response.json())
         return None
 
+def is_sub_file(file_path, sub_file):
+    video_name = file_path.name
+    sub_name = sub_file.name
+    sub_ext = sub_name.split(".")[-1]
+    if sub_ext != "vtt":
+        debug(f"Skipping non-vtt sub [{sub_name}]")
+        return False
+    video_name_base = video_name.split(".")[0]
+    sub_name_base = sub_name
+    matches = video_name_base in sub_name_base
+    info(f"Checking if [{video_name_base}]x[{sub_name_base}] => {matches}")
+    return matches
 
 def find_subs(file_path):
-    subs_dir = file_path.parent / "subtitles"
-    if not subs_dir.exists():
-        info(f"Subtitles dir not found in {subs_dir}")
-        return []
+    subtitles_dir = file_path.parent / "subtitles"
+    subs_dir = file_path.parent / "subs"
+    dirs = [subtitles_dir, subs_dir]
     subs = []
-    for sub_file in subs_dir.iterdir():
-        file_name = file_path.name
-        if file_name in sub_file.name:
-            subs.append(sub_file)
+    for adir in dirs:
+        if not subs_dir.exists():
+            info(f"Subtitles dir not found in {subs_dir}")
+            continue
+        for sub_file in subs_dir.iterdir():
+            if is_sub_file(file_path, sub_file):
+                subs.append(sub_file)
+    info(f"Found [{len(subs)}] subtitles for file[{file_path.name}].")
     return subs
 
 
@@ -197,8 +218,8 @@ def vimeo_assoc_sub(vimeo_url, sub_uri, lang_code):
 
 
 def vimeo_upload_subs(video, vimeo_url):
-    info("Uploading subtitles")
     subs = find_subs(video)
+    info(f"Uploading [{len(subs)}] subs for [{video.name}]")
     for sub in subs:
         sub_name = sub.name
         lang_code = sub_name.split(".")[0]
@@ -213,7 +234,6 @@ def vimeo_upload_subs(video, vimeo_url):
 
 
 def vimeo_sync(video):
-    info("Video not synced.")
     # load user folder
     user_folder_name = user_name()
     info(f"Checking vimeo user folder [{user_folder_name}]")
@@ -235,14 +255,14 @@ def vimeo_sync(video):
         data_folder = get_folder(data_folder_name)
         info(f"Folder [{data_folder_uri}] created.")
     # check if video is synced
-    is_sync = is_synced(video, data_folder_uri)
-    if not is_sync:
+    vimeo_url = is_synced(video, data_folder_uri)
+    if not vimeo_url:
         info(f"Uploading {str(video)}")
         vimeo_url = vimeo_upload(video, data_folder_uri)
         # info(f"Moving url[{vimeo_url}] to data_folder[{data_folder_name}]")
         # vimeo_move(vimeo_url, data_folder)
-        info(f"TODO: Sync subs")
-        vimeo_upload_subs(video, vimeo_url)
+    info(f"TODO: Sync subs")
+    vimeo_upload_subs(video, vimeo_url)
 
     info(f"Video {str(video)} syncing done.")
     return {}
