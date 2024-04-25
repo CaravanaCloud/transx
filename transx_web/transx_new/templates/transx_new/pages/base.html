@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    {% include 'transx_new/partials/head.html' %}
+    <title>{% block title %}transx{% endblock title %}</title>
+</head>
+    <body>
+        {% include 'transx_new/partials/header.html' %}
+        <main class="main-content-container">
+            {% block content %}
+            {% endblock content %}
+        </main>
+
+    </body>
+    {% include 'transx_new/partials/footer.html' %}
+</html>
