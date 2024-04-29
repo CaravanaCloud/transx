@@ -1,10 +1,38 @@
 <header class="main-header-container">
-    <div class="main-header container">
-        <h1>
-            <a class="main-logo" href="{% url 'transx_new:home' %}">
-                <i class="fas fa-video main-logo-icon"></i>
-                <span class="main-logo-text">Trasnx</span>
-            </a>
-        </h1>
-    </div>
+
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{% url 'transx_new:home' %}"><span class="text-warning"><i class="fas fa-video main-logo-icon"></i>Trasnx</span></a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="">what ?</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav ml-auto">
+                        {% if user.is_authenticated %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="">My videos</a>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="">Register</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% if user.is_authenticated %}
+                    <p class="text-white mt-3 px-4">{{ user.username }}</p>
+                    <button class="btn btn-sm btn-warning" type="submit"> <a class="nav-link text-dark" href=""><strong>Logout</strong></a></button>
+                {% else %}
+                    <button class="btn btn-sm btn-warning" type="submit"> <a class="nav-link text-dark" href=""><strong>Login</strong></a></button>
+                {% endif %}
+            </div>
+    </nav>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
 </header>

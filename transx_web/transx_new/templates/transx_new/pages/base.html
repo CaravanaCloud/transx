@@ -5,8 +5,10 @@
     {% include 'transx_new/partials/head.html' %}
     <title>{% block title %}transx{% endblock title %}</title>
 </head>
+{% include 'transx_new/partials/header.html' %}
+
     <body>
-        {% include 'transx_new/partials/header.html' %}
+
         <main class="main-content-container">
             {% block content %}
             {% endblock content %}

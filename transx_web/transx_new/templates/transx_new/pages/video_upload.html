@@ -1,17 +1,23 @@
 {% extends 'transx_new/pages/base.html' %}
+{% load crispy_forms_tags %}
 
 {% block content %}
 
 <div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            <h1 class="text-center">Upload a video</h1>
+        <h1 class="p-3 text-center">Upload a video</h1>
+        <div class="container p-3" style="width:35%;">
             <form action="{% url 'transx_new:video_upload' %}" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="btn btn-primary">Upload</button>
+                <div class ="row">
+                    <div class="col">{{form.title| as_crispy_field}}</div>
+                </div>
+                <div class ="row">
+                    <div class="col">{{form.video| as_crispy_field}}</div>
+                </div>
+                <div class="container text-center">
+                <button type="submit" class="btn btn-warning">Upload</button>
+                </div>
             </form>
-        </div>
     </div>
 </div>
 

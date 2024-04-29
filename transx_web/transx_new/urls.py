@@ -7,5 +7,6 @@ app_name = 'transx_new'
 urlpatterns = [
     # Homepage
     path('', views.home, name='home'),
-    path('transx/video/', views.video_upload, name='video_upload'),
+    path('video/', views.video_upload, name='video_upload'),
 ]
+
