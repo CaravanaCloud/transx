@@ -105,8 +105,8 @@ def is_media(file_path):
 
 def run(directory, bucket_name):
     """Sync files to S3, checking each file for changes and uploading only if necessary."""
-    directory = resolve(Config.TRANSX_PATH, directory)
-    bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
+    directory = resolve(Config.MEDIA_PATH, directory)
+    bucket_name = resolve(Config.BUCKET_NAME, bucket_name)
     info(f"Syncing files in {directory} to s3://{bucket_name}")
     ensure_bucket_exists(bucket_name)
     all_files = files.find_all(directory)

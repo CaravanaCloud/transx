@@ -167,3 +167,7 @@ def check_role():
         info(f"Role {role_name} created.")
         return role_name
     return None
+
+
+def resolve(config, default_val):
+    return config.resolve(default_val)

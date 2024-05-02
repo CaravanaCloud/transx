@@ -28,8 +28,8 @@ def start_translate_job(translate_prefix, bucket_name, job_name):
     output_key = s3_key("translate", job_name)
     output_uri = s3_url_abs(bucket_name, output_key)
     role_arn = check_role()
-    src_lang = resolve(Config.TRANSX_SOURCE_LANG)
-    tgt_lang_str = resolve(Config.TRANSX_TARGET_LANG)
+    src_lang = resolve(Config.SOURCE_LANG)
+    tgt_lang_str = resolve(Config.TARGET_LANG)
     tgt_langs = tgt_lang_str.split(",")
     job_info = {
         'JobName': job_name,
@@ -146,8 +146,8 @@ def write_translate_job(subtitle_prefix, done_job):
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
     """Translates media files."""
-    bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
-    directory = resolve(Config.TRANSX_PATH, directory)
+    bucket_name = resolve(Config.BUCKET_NAME, bucket_name)
+    directory = resolve(Config.MEDIA_PATH, directory)
     sync_res = sync.run(directory, bucket_name)
     sync_ok = sync_res.get('status') == 'ok'
     if not sync_ok:

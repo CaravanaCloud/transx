@@ -144,8 +144,8 @@ def download(file_path, bucket_name, job_info):
 @click.option('--bucket_name', default=None, help='Bucket name')
 def command(directory, bucket_name):
     """Transcribes media files."""
-    bucket_name = resolve(Config.TRANSX_BUCKET_NAME, bucket_name)
-    directory = resolve(Config.TRANSX_PATH, directory)
+    bucket_name = resolve(Config.BUCKET_NAME, bucket_name)
+    directory = resolve(Config.MEDIA_PATH, directory)
     sync_res = sync.run(directory, bucket_name)
     sync_ok = sync_res.get('status') == 'ok'
     if not sync_ok:
