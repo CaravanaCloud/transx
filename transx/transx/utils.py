@@ -169,5 +169,5 @@ def check_role():
     return None
 
 
-def resolve(config, default_val):
+def resolve(config, default_val=None):
     return config.resolve(default_val)
