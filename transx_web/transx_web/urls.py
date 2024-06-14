@@ -14,18 +14,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path
-from django.urls import include
-from django.conf import settings
-from . import views
-from django.conf.urls.static import static
+from django.contrib import admin # type: ignore
+from django.urls import path # type: ignore
+from django.urls import include # type: ignore
+from django.conf import settings # type: ignore
+from . import views # type: ignore
+from django.conf.urls.static import static # type: ignore
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('transx_new.urls')),
     path('users/', include('users.urls')),
+    path('social-auth/', include('social_django.urls', namespace='social-auth')),
 ]
 
 if settings.DEBUG:

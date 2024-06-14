@@ -1,10 +1,15 @@
 from .import views
-from django.urls import path
-from django.urls import include
+from django.urls import path # type: ignore
+from django.urls import include # type: ignore
+
+from users.apis import GoogleLoginApi, GoogleLoginRedirectApi
 
 app_name = 'users'
 urlpatterns = [
-    path('', include('django.contrib.auth.urls')),
-    path('log_out/', views.log_out, name='log_out'),
+    #path('', include('django.contrib.auth.urls')),
+    #path('login/', views.login, name='login'),
+    path('logout/', views.log_out, name='logout'),
     path('register/', views.register, name='register'),
+    path("callback/", GoogleLoginApi.as_view(), name="callback-sdk"),
+    path("redirect/", GoogleLoginRedirectApi.as_view(), name="redirect-sdk"),
 ]
