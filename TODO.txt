@@ -1,0 +1,13 @@
+# Julio
+
+# TODO: Create aws dns zone for dev.transx.XXXX.com
+# TODO: Finish google client ID and add to secrets
+# TODO: Finish idenitty pool setup
+# * continue with file upload to S3
+
+https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/getting-started-browser.html
+
+# Matheus
+
+# TODO: Call to server side function (either skel functon or api)
+# IDEA: Bind lambda functions to bucket and test by hand (AWS SAM?)
