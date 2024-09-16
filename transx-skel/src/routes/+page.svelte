@@ -2,18 +2,8 @@
 	<div class="space-y-10 text-center flex flex-col items-center">
 		<h2 class="h2">Welcome to Transx</h2>
 		<h3 class="h3">Automated transcription and translation</h3>
-		<div class="space-y-10 text-center">
-			<a
-				class="btn variant-filled"
-				href="/file_upload"
-				rel="noreferrer"
-			>
-				Submit files
-			</a>
-		</div>
+		<a class="btn variant-filled" href="/file_upload" rel="noreferrer"> Submit files </a>
 	</div>
-	
-
 </div>
 
 <style lang="postcss">
@@ -26,7 +16,8 @@
 	}
 	.img-bg {
 		@apply absolute z-[-1] rounded-full blur-[50px] transition-all;
-		animation: pulse 5s cubic-bezier(0, 0, 0, 0.5) infinite,
+		animation:
+			pulse 5s cubic-bezier(0, 0, 0, 0.5) infinite,
 			glow 5s linear infinite;
 	}
 	@keyframes glow {

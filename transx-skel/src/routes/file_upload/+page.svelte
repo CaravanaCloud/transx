@@ -1,7 +1,33 @@
+<script lang="ts">
+	let operations: [];
+	let operationTranscribe: boolean = false;
+	let fileName: string = '';
+	let file: File | null = null;
+
+	const hadleSubimit= () => {
+		console.log(`operations: ${operations}, filename: ${fileName}, File:`, file);
+		// TODO connect custom send to backend process
+	};
+</script>
+
 <div class="container h-full mx-auto flex justify-center items-center">
 	<div class="space-y-10 text-center flex flex-col items-center">
-		<h2 class="h2">Welcome to Transx</h2>
-		<h3 class="h3">Automated transcription and translation</h3>
-		<h3 class="h3">FORM</h3>
+			<form on:submit|preventDefault={hadleSubimit} class="space-y-10 flex flex-col ">
+				<input placeholder="File name" class="input variant-form-material" bind:value={fileName} />
+			<div class="space-y-2">
+				<label class="flex items-center space-x-2">
+					<input class="checkbox" type="checkbox" bind:group={operations} value="translate"/>
+					<p>Translate</p>
+				</label>
+				<label class="flex items-center space-x-2">
+					<input class="checkbox" type="checkbox" bind:group={operations} value="transcribe"/>
+					<p>Transcribe</p>
+				</label>
+			</div>
+			<div class="space-y-10 text-center flex flex-col items-center">
+				<input class="input" type="file" bind:value={file} />
+			</div>
+			<button type="submit" class="btn variant-filled">Subimit</button>
+		</form>
 	</div>
 </div>

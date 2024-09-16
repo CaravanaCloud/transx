@@ -18,3 +18,5 @@ transx/dist
 
 out
 *.log
+/.svelte-kit
+/node_modules
