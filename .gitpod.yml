@@ -6,7 +6,7 @@ tasks:
     command: echo 'Starting project'
 
   - name: DEV
-    command: ./scripts/start-all-dev.sh
+    command: ./scripts/skel-start-dev.sh
 
 ports:
   - port: 8080
