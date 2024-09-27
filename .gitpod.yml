@@ -5,8 +5,10 @@ tasks:
   - init: echo 'Initializing project'
     command: echo 'Starting project'
 
-  - name: DEV
-    command: ./scripts/skel-start-dev.sh
+  - name: DEV WEB
+    command: ./scripts/skel-start-dev.sh api-start-dev.sh
+  - name: DEV API
+    command: ./scripts/api-start-dev.sh
 
 ports:
   - port: 8080

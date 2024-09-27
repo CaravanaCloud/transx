@@ -1,5 +1,5 @@
 .envrc
-
+.venv 
 .class
 target
 test/*.storage
@@ -15,7 +15,7 @@ transx/dist
 *.vtt
 *.srt
 *.transcribe.json
-
+.env
 out
 *.log
 /.svelte-kit

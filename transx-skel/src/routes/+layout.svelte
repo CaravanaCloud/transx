@@ -31,12 +31,12 @@
 		</svelte:fragment>
 
 		{#if $page.data.session}
-			<a 
+			<button
 				class="btn btn-sm variant-ghost-surface"
-				on:click|preventDefault={signOut}
+				on:click={() => signOut()}
 			>
 				Logout
-			</a>
+			</button>
 		{:else}
 				<a href="/auth/login" class="btn btn-sm variant-ghost-surface" >Login</a>
 		{/if}
