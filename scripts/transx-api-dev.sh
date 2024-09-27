@@ -3,4 +3,4 @@ SOURCE_DIR="$(dirname $SCRIPT_DIR)"
 
 cd $SOURCE_DIR/transx-api
 poetry install
-poetry run uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload

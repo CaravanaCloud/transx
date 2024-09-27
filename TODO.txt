@@ -1,5 +1,9 @@
 # Julio
 
+# How to integrate with cognito:
+// Hosted UI: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-integration.html
+
+
 # TODO: Create aws dns zone for dev.transx.XXXX.com
 # TODO: Finish google client ID and add to secrets
 # TODO: Finish idenitty pool setup
@@ -10,4 +14,11 @@ https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/getting-starte
 # Matheus
 
 # TODO: Call to server side function (either skel functon or api)
+
 # IDEA: Bind lambda functions to bucket and test by hand (AWS SAM?)
+
+
+# How to integrate with cognito:
+// Hosted UI: https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-app-integration.html
+
+https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-UsingHTTPPOST.html

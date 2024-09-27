@@ -24,12 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-s3 = client('s3',
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-            )
+s3 = client('s3')
 
-@app.get("/auth/callback")
+@app.get("/auth/callback")  
 async def auth_callback(token: str):
     """
     Callback do Cognito após o login do Google.
