@@ -8,7 +8,7 @@ tasks:
   - name: DEV WEB
     command: ./scripts/skel-start-dev.sh api-start-dev.sh
   - name: DEV API
-    command: ./scripts/api-start-dev.sh
+    command: ./scripts/transx-api-dev.sh
 
 ports:
   - port: 8080

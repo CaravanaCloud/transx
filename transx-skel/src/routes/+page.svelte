@@ -1,8 +1,22 @@
+<script lang="ts">
+	import type { PageData } from './$types';
+
+	export let data: PageData;
+</script>
+
 <div class="container h-full mx-auto flex justify-center items-center">
 	<div class="space-y-10 text-center flex flex-col items-center">
 		<h2 class="h2">Welcome to Transx</h2>
 		<h3 class="h3">Automated transcription and translation</h3>
-		<a class="btn variant-filled" href="/file_upload" rel="noreferrer"> Submit files </a>
+		<a class="btn variant-filled" href="/protected/file_upload" rel="noreferrer"> Submit files </a>
+
+		<h1>Auth demo</h1>
+		<a href={data.signInUrl}>Sign in (or sign up)</a>
+		{#if data.email}
+			<p>Logged in as {data.email}</p>
+		{:else}
+			<p>Not logged in</p>
+		{/if}
 	</div>
 </div>
 
